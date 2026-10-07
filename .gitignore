@@ -1,0 +1,7 @@
+.godot/
+.env.local
+test_runs/
+builds/
+private/
+*.tmp
+__pycache__/
