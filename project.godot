@@ -1,0 +1,31 @@
+; Afterlight — Godot 4.7, Compatibility / GL.
+config_version=5
+
+[application]
+config/name="Afterlight"
+run/main_scene="res://game/main.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+config/description="A Minesweeper expedition from first light to a fleet of your own."
+config/icon="res://assets/icon.svg"
+
+[display]
+window/size/viewport_width=1440
+window/size/viewport_height=900
+window/size/window_width_override=1280
+window/size/window_height_override=800
+window/size/min_width=960
+window/size/min_height=600
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/default_filters/use_nearest_mipmap_filter=false
+environment/defaults/default_clear_color=Color(0.035,0.065,0.09,1)
+
+[audio]
+driver/enable_input=false
+
+[application/config]
+version="1.0.0"
