@@ -156,7 +156,8 @@ func _draw() -> void:
 			if b.pockets[i] == 1:
 				Palette.star(self,rect.position+Vector2(rect.size.x-8,8),4,accent)
 		elif cell == MineBoard.FLAG:
-			Palette.icon(self,"flag",rect.get_center(),tile_size*0.35,accent)
+			var pop := 1.0 + (sin(age*PI/0.18)*0.25*(1-age*2)*motion if age >= 0 and age < 0.5 else 0.0)
+			Palette.icon(self,"flag",rect.get_center(),tile_size*0.35*pop,accent)
 		elif cell == MineBoard.HIT:
 			Palette.icon(self,"nova",rect.get_center(),tile_size*0.38,Palette.CORAL)
 		if session.finished and b.mines[i] == 1 and cell == MineBoard.HIDDEN:

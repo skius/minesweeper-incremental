@@ -4,6 +4,7 @@ extends Control
 var particles: Array[Dictionary] = []
 var popups: Array[Dictionary] = []
 var rings: Array[Dictionary] = []
+var beams: Array[Dictionary] = []
 var rng := RandomNumberGenerator.new()
 var motion: float = 1
 var enabled: bool = true
@@ -28,6 +29,9 @@ func popup(origin: Vector2, text: String, color: Color) -> void:
 func ring(origin: Vector2,color: Color) -> void:
 	rings.append({"p":origin,"color":color,"age":0.0})
 
+func beam(start: Vector2, end: Vector2, color: Color) -> void:
+	beams.append({"start":start,"end":end,"color":color,"age":0.0})
+
 func _process(delta: float) -> void:
 	for i in range(particles.size()-1,-1,-1):
 		var p := particles[i]
@@ -48,6 +52,10 @@ func _process(delta: float) -> void:
 		rings[i].age += delta
 		if rings[i].age > 0.8:
 			rings.remove_at(i)
+	for i in range(beams.size()-1,-1,-1):
+		beams[i].age += delta
+		if beams[i].age > 0.55:
+			beams.remove_at(i)
 	queue_redraw()
 
 func _draw() -> void:
@@ -63,3 +71,8 @@ func _draw() -> void:
 		draw_string(font,origin-Vector2(text_size.x/2,0),p.text,HORIZONTAL_ALIGNMENT_LEFT,-1,22,color)
 	for r in rings:
 		draw_arc(r.p,12+r.age*95*motion,0,TAU,50,Color(r.color,0.7*(1-r.age/0.8)),2,true)
+	for b in beams:
+		var alpha: float = 1-b.age/0.55
+		var tip: Vector2 = b.start.lerp(b.end,minf(1,b.age*9))
+		draw_line(b.start,tip,Color(b.color,alpha*0.15),12,true)
+		draw_line(b.start,tip,Color(b.color,alpha*0.85),2,true)

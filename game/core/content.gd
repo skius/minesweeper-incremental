@@ -58,12 +58,13 @@ static func region_for(index: int) -> int:
 static func contract(index: int, trial: int = -1) -> Dictionary:
 	var region := region_for(index)
 	var step := index % REGION_LENGTH
-	var width := 8 + region + mini(step / 5, 2)
-	var height := 7 + region / 2 + mini(step / 7, 2)
-	if region >= 4:
-		width += 1
-		height += 1
-	var density := 0.13 + region * 0.013 + (step % 4) * 0.009
+	var width: int = [9,12,14,15,17,18][region] + step / 8
+	var height: int = [8,9,10,11,12,12][region] + (1 if step >= 8 and region < 4 else 0)
+	var density := 0.16 + region * 0.017 + (step % 4) * 0.008
+	if index < 3:
+		width = 8
+		height = 7
+		density = 0.13 + index * 0.015
 	if trial >= 0:
 		width = 11 + trial / 3
 		height = 9 + trial / 4
