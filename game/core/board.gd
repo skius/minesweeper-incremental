@@ -236,6 +236,11 @@ static func validate(data: Dictionary) -> bool:
 	for key in ["width","height","mine_count","seed","generated","mines","clues","cells","pockets"]:
 		if not data.has(key):
 			return false
+	for key in ["width","height","mine_count","seed"]:
+		if not integer_value(data[key],-9_000_000_000_000_000,9_000_000_000_000_000):
+			return false
+	if not data.generated is bool or not integer_value(data.get("crust",0),0,12):
+		return false
 	var w := int(data.width)
 	var h := int(data.height)
 	if w < 4 or w > 32 or h < 4 or h > 24 or int(data.mine_count) < 1 or int(data.mine_count) > w * h - 10:
@@ -245,13 +250,13 @@ static func validate(data: Dictionary) -> bool:
 			return false
 		var upper := 8 if key == "clues" else (3 if key == "cells" else 1)
 		for value in data[key]:
-			if not (value is int or value is float) or value < 0 or value > upper or value != int(value):
+			if not integer_value(value,0,upper):
 				return false
 	if data.has("plates"):
 		if not data.plates is Array or data.plates.size() != w*h:
 			return false
 		for value in data.plates:
-			if not (value is int or value is float) or value < 0 or value > 12 or value != int(value):
+			if not integer_value(value,0,12):
 				return false
 	if data.generated:
 		var counted_mines := 0
@@ -262,6 +267,12 @@ static func validate(data: Dictionary) -> bool:
 		for i in range(w * h):
 			if int(data.cells[i]) == OPEN and int(data.mines[i]) == 1:
 				return false
+			if int(data.cells[i]) == HIT and int(data.mines[i]) == 0:
+				return false
+			if data.has("plates") and int(data.cells[i]) in [OPEN,HIT] and data.plates[i]>0:
+				return false
+			if int(data.pockets[i])==1 and int(data.mines[i])==1:
+				return false
 			var count := 0
 			for dy in range(-1, 2):
 				for dx in range(-1, 2):
@@ -271,4 +282,20 @@ static func validate(data: Dictionary) -> bool:
 						count += int(data.mines[y * w + x])
 			if count != int(data.clues[i]):
 				return false
+	else:
+		for i in range(w*h):
+			if int(data.cells[i]) not in [HIDDEN,FLAG]:
+				return false
+			if data.mines[i]!=0 or data.clues[i]!=0 or data.pockets[i]!=0 or (data.has("plates") and data.plates[i]!=0):
+				return false
 	return true
+
+static func integer_value(value: Variant, minimum: int = 0, maximum: int = 9_000_000_000_000_000) -> bool:
+	if not (value is int or value is float):
+		return false
+	if not is_finite(float(value)) or value<minimum or value>maximum:
+		return false
+	return value==int(value)
+
+static func number_value(value: Variant) -> bool:
+	return (value is int or value is float) and is_finite(float(value)) and value>=0 and value<=9_000_000_000_000_000

@@ -468,7 +468,7 @@ func tick(delta: float) -> void:
 
 func drone_cycle() -> void:
 	for _j in range(drone_count()):
-		if finished or layer_ready:
+		if finished or layer_ready or board.completed():
 			return
 		var moves := board.deductions(has("logic"))
 		if not moves.safe.is_empty():
@@ -540,15 +540,35 @@ func to_dict() -> Dictionary:
 	return {"version":2,"stratum":stratum,"layer_ready":layer_ready,"excavations":excavations,"manual_excavations":manual_excavations,"index":index,"trial":trial,"credits":credits,"cores":cores,"upgrades":upgrades,"medals":medals,"trial_medals":trial_medals,"total_light":total_light,"total_reveals":total_reveals,"total_flags":total_flags,"total_drone":total_drone,"total_strikes":total_strikes,"play_seconds":play_seconds,"board_seconds":board_seconds,"energy":energy,"probe_charge":probe_charge,"drone_clock":drone_clock,"overclock":overclock,"chain":chain,"strikes":strikes,"manual_actions":manual_actions,"board_earned":board_earned,"finished":finished,"completed_campaign":completed_campaign,"drones_enabled":drones_enabled,"last_reward":last_reward,"paid_flags":paid_flags,"seen_intro":seen_intro,"livery":livery,"board":board.to_dict()}
 
 static func from_dict(data: Dictionary) -> GameSession:
-	if int(data.get("version", 0)) not in [1,2] or not data.get("board") is Dictionary:
+	if not MineBoard.integer_value(data.get("version"),1,2) or not data.get("board") is Dictionary:
 		return null
 	var loaded_board := MineBoard.from_dict(data.board)
-	if loaded_board == null or int(data.get("index", -1)) < 0:
+	if loaded_board == null:
 		return null
-	for key in ["credits","cores","total_light","total_reveals","total_flags","total_drone","total_strikes","play_seconds","energy","probe_charge","strikes","chain"]:
-		if not data.has(key) or not (data[key] is float or data[key] is int) or data[key] < 0 or not is_finite(float(data[key])):
+	for key in ["index","credits","cores","total_light","total_reveals","total_flags","total_drone","total_strikes","strikes","chain"]:
+		if not MineBoard.integer_value(data.get(key)):
 			return null
-	if not data.get("upgrades") is Array or not data.get("medals") is Dictionary or not data.get("trial_medals") is Dictionary:
+	for key in ["stratum","excavations","manual_excavations","manual_actions","board_earned"]:
+		if not MineBoard.integer_value(data.get(key,0)):
+			return null
+	for key in ["play_seconds","energy","probe_charge"]:
+		if not MineBoard.number_value(data.get(key)):
+			return null
+	for key in ["board_seconds","drone_clock","overclock"]:
+		if not MineBoard.number_value(data.get(key,0)):
+			return null
+	for key in ["finished","completed_campaign","drones_enabled","seen_intro","layer_ready"]:
+		if data.has(key) and not data[key] is bool:
+			return null
+	if not MineBoard.integer_value(data.get("trial",-1),-1,11) or not MineBoard.integer_value(data.get("livery",0),0,2):
+		return null
+	if not data.get("upgrades") is Array or not data.get("paid_flags",[]) is Array:
+		return null
+	if not valid_medals(data.get("medals")) or not valid_medals(data.get("trial_medals"),11):
+		return null
+	if not data.get("last_reward",{}) is Dictionary:
+		return null
+	if data.get("finished",false) and not valid_reward(data.get("last_reward",{})):
 		return null
 	var result := GameSession.new()
 	for key in ["stratum","layer_ready","excavations","manual_excavations","index","trial","credits","cores","medals","trial_medals","total_light","total_reveals","total_flags","total_drone","total_strikes","play_seconds","board_seconds","energy","probe_charge","drone_clock","overclock","chain","strikes","manual_actions","board_earned","finished","completed_campaign","drones_enabled","last_reward","seen_intro","livery"]:
@@ -560,14 +580,37 @@ static func from_dict(data: Dictionary) -> GameSession:
 		if not result.upgrades.has(id):
 			result.upgrades.append(id)
 	for cell in data.get("paid_flags", []):
-		result.paid_flags.append(int(cell))
+		if not MineBoard.integer_value(cell,0,loaded_board.cells.size()-1):
+			return null
+		if not result.paid_flags.has(int(cell)):
+			result.paid_flags.append(int(cell))
 	result.board = loaded_board
 	result.energy = clampf(result.energy, 0, result.capacity())
 	result.probe_charge = clampf(result.probe_charge, 0, result.probe_capacity())
 	if (result.finished or result.layer_ready) != loaded_board.completed() or result.stratum < 0 or result.stratum >= Content.strata_for(result.index,result.trial):
 		return null
+	if result.finished and result.layer_ready:
+		return null
+	if result.layer_ready and result.stratum+1>=Content.strata_for(result.index,result.trial):
+		return null
 	result.events.clear()
 	return result
+
+static func valid_medals(value: Variant, maximum: int = 9_000_000_000_000_000) -> bool:
+	if not value is Dictionary:
+		return false
+	for key in value:
+		if not key is String or key.length()>16 or not key.is_valid_int():
+			return false
+		if not MineBoard.integer_value(key.to_int(),0,maximum) or not MineBoard.integer_value(value[key],1,3):
+			return false
+	return true
+
+static func valid_reward(value: Dictionary) -> bool:
+	for key in ["bonus","cores","flags","earned"]:
+		if not MineBoard.integer_value(value.get(key)):
+			return false
+	return MineBoard.integer_value(value.get("rating"),1,3) and MineBoard.number_value(value.get("seconds")) and value.get("region_end") is bool
 
 func probe_capacity() -> float:
 	return 2.0 if has("reservoir") else 1.0
