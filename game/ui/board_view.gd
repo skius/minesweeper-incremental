@@ -19,6 +19,8 @@ var shake: float = 0
 var complete_wave: float = -1
 var drone_positions: Array[Vector2] = []
 var drone_targets: Array[Vector2] = []
+var drone_hold: Array[float] = []
+var next_drone: int = 0
 var font: Font = ThemeDB.fallback_font
 var tile_style := Palette.box(Color.WHITE,6,Palette.EDGE)
 var shadow_style := Palette.box(Color("07151c"),6)
@@ -30,6 +32,11 @@ func _ready() -> void:
 	mouse_default_cursor_shape = CURSOR_POINTING_HAND
 	clip_contents = true
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	mouse_exited.connect(func():
+		hover=-1
+		cell_hovered.emit(-1)
+		queue_redraw()
+	)
 
 func geometry() -> void:
 	if session == null:
@@ -71,14 +78,23 @@ func animate_cells(cells: Array, source: String) -> void:
 	for j in range(cells.size()):
 		animations[cells[j]] = -minf(j*0.015,0.5)
 	if source == "drone" and not cells.is_empty():
-		var count := maxi(1,session.drone_count())
-		ensure_drones(count)
-		drone_targets[int(time*7)%count] = cell_position(cells[0])
+		visit_drone(cells[0])
+
+func visit_drone(cell: int) -> void:
+	var count := session.drone_count()
+	if count<=0:
+		return
+	ensure_drones(count)
+	var worker := next_drone%count
+	drone_targets[worker] = cell_position(cell)-Vector2.ONE*tile_size*0.31
+	drone_hold[worker] = 0.9
+	next_drone+=1
 
 func ensure_drones(count: int) -> void:
 	while drone_positions.size() < count:
 		drone_positions.append(Vector2(28+drone_positions.size()*28,58))
 		drone_targets.append(Vector2(28+drone_targets.size()*28,58))
+		drone_hold.append(0.0)
 
 func _process(delta: float) -> void:
 	time += delta
@@ -92,7 +108,10 @@ func _process(delta: float) -> void:
 		if complete_wave > 2:
 			complete_wave = -1
 	for i in range(drone_positions.size()):
-		drone_positions[i] = drone_positions[i].lerp(drone_targets[i],minf(1,delta*4))
+		drone_hold[i]=maxf(0,drone_hold[i]-delta)
+		if drone_hold[i]<=0:
+			drone_targets[i]=Vector2(28+i*28,58)
+		drone_positions[i] = drone_positions[i].lerp(drone_targets[i],minf(1,delta*8)) if motion>0 else drone_targets[i]
 	queue_redraw()
 
 func _draw() -> void:
@@ -175,8 +194,8 @@ func _draw() -> void:
 					draw_line(rect.get_center()+Vector2(offset_x,-tile_size*0.21),rect.get_center()+Vector2(offset_x,tile_size*0.21),stripe,2)
 				for sign_value in [-1,1]:
 					draw_circle(rect.get_center()+Vector2(sign_value*tile_size*0.29,0),1.5,Color("d1d9df"))
-			elif session.has("compass") and b.pockets[i]==1:
-				Palette.icon(self,"prism",rect.get_center(),tile_size*0.35,Color("485d69"))
+			if session.has("compass") and b.pockets[i]==1:
+				Palette.icon(self,"prism",rect.position+Vector2(rect.size.x-6,6),maxf(5,tile_size*0.19),Palette.GOLD.darkened(0.2))
 			if not b.generated and i == (b.height/2)*b.width+b.width/2:
 				Palette.star(self,rect.get_center(),tile_size*0.14,Color("fff0b8"))
 		elif visible_open:
@@ -192,11 +211,14 @@ func _draw() -> void:
 				Palette.star(self,rect.position+Vector2(rect.size.x-8,8),4,accent)
 		elif cell == MineBoard.FLAG:
 			var pop := 1.0 + (sin(age*PI/0.18)*0.25*(1-age*2)*motion if age >= 0 and age < 0.5 else 0.0)
-			Palette.icon(self,"flag",rect.get_center(),tile_size*0.4*pop,Color("633c6b"))
+			Palette.icon(self,"flag",rect.get_center(),tile_size*0.4*pop,Palette.FLAG)
 		elif cell == MineBoard.HIT:
 			Palette.icon(self,"nova",rect.get_center(),tile_size*0.38,Palette.CORAL)
 		if (session.finished or session.layer_ready) and b.mines[i] == 1 and cell == MineBoard.HIDDEN:
-			Palette.icon(self,"prism",rect.get_center(),tile_size*0.25,accent.darkened(0.25))
+			Palette.icon(self,"mine",rect.get_center(),tile_size*0.32,Palette.INK)
+		if i==selected and not blocked:
+			draw_rect(rect.grow(1),Palette.WHITE if keyboard_cell>=0 else Color(Palette.WHITE,0.65),false,2 if keyboard_cell>=0 else 1)
+	draw_readout(selected)
 	if complete_wave >= 0 and motion > 0:
 		var radius := complete_wave*size.x*0.7
 		draw_arc(size/2,radius,0,TAU,100,Color(accent,maxf(0,0.55-complete_wave*0.3)),3,true)
@@ -205,9 +227,30 @@ func _draw() -> void:
 		for i in range(session.drone_count()):
 			var p := drone_positions[i]
 			p.y += sin(time*2.5+i)*3*motion
-			draw_circle(p+Vector2(0,7),12,Color(0,0,0,0.2))
-			draw_circle(p,13,Palette.INK)
-			Palette.icon(self,"drone",p,16,Palette.GOLD if session.livery == 1 else (Palette.CORAL if session.livery == 2 else accent))
+			draw_circle(p+Vector2(0,4),7,Color(0,0,0,0.2))
+			draw_circle(p,7,Palette.INK)
+			Palette.icon(self,"drone",p,12,Palette.GOLD if session.livery == 1 else (Palette.CORAL if session.livery == 2 else Palette.MINT))
+
+func draw_readout(selected: int) -> void:
+	if selected<0 or blocked:
+		return
+	var b := session.board
+	var center := Vector2(size.x/2,size.y-34)
+	if b.cells[selected]==MineBoard.OPEN and b.clues[selected]>0:
+		var flags := 0
+		for n in b.neighbours(selected):
+			flags+=1 if b.cells[n] in [MineBoard.FLAG,MineBoard.HIT] else 0
+		Palette.icon(self,"mine",center+Vector2(-68,0),19,Palette.MUTED)
+		draw_string(font,center+Vector2(-51,7),str(b.clues[selected]),HORIZONTAL_ALIGNMENT_LEFT,-1,20,Palette.WHITE)
+		draw_line(center+Vector2(-20,-12),center+Vector2(-20,12),Palette.EDGE,1)
+		Palette.icon(self,"flag",center+Vector2(1,0),18,Palette.MUTED)
+		draw_string(font,center+Vector2(16,7),str(flags),HORIZONTAL_ALIGNMENT_LEFT,-1,20,Palette.MINT if flags==b.clues[selected] else Palette.WHITE)
+		if flags==b.clues[selected]:
+			Palette.mouse(self,center+Vector2(61,0),1,Palette.MINT,0.85)
+	elif b.cells[selected]==MineBoard.HIDDEN and b.plates[selected]>0:
+		for layer in range(mini(3,b.plates[selected])):
+			draw_line(center+Vector2(-33,-7+layer*7),center+Vector2(-8,-7+layer*7),Palette.MUTED,2)
+		draw_string(font,center+Vector2(9,7),str(b.plates[selected]),HORIZONTAL_ALIGNMENT_LEFT,-1,20,Palette.WHITE)
 
 # Procedural keycaps are baked once per colour; hundreds of tiles can then batch.
 func tile_texture(color: Color) -> ImageTexture:

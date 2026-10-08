@@ -77,6 +77,6 @@ func _draw() -> void:
 		draw_arc(r.p,12+r.age*95*motion,0,TAU,50,Color(r.color,0.7*(1-r.age/0.8)),2,true)
 	for b in beams:
 		var alpha: float = 1-b.age/0.55
-		var tip: Vector2 = b.start.lerp(b.end,minf(1,b.age*9))
+		var tip: Vector2 = b.start.lerp(b.end,minf(1,b.age*9)) if motion>0 else b.end
 		draw_line(b.start,tip,Color(b.color,alpha*0.15),12,true)
 		draw_line(b.start,tip,Color(b.color,alpha*0.85),2,true)

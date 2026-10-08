@@ -82,7 +82,7 @@ static func region_for(index: int) -> int:
 	return mini(index / REGION_LENGTH, 5)
 
 static func contract(index: int, trial: int = -1, stratum: int = 0) -> Dictionary:
-	var region := region_for(index)
+	var region := trial/2 if trial>=0 else region_for(index)
 	var step := index % REGION_LENGTH
 	var width: int = [9,13,16,19,22,24][region] + step / 8
 	var height: int = [8,10,12,13,14,16][region] + (1 if step >= 8 and region < 4 else 0)
@@ -95,7 +95,8 @@ static func contract(index: int, trial: int = -1, stratum: int = 0) -> Dictionar
 		width = 11 + trial / 3
 		height = 9 + trial / 4
 		density = 0.19 + (trial % 3) * 0.015
-	return {"width":width,"height":height,"mines":int(width * height * density),"seed":71093 + index * 7919 + maxi(trial, 0) * 11003 + stratum * 104729,"region":region,"step":step,"trial":trial,"finale":step == 15,"crust":0 if index<6 or trial>=0 else mini(6,1+region+stratum/4)}
+	var board_seed := 350003+trial*11003 if trial>=0 else 71093+index*7919+stratum*104729
+	return {"width":width,"height":height,"mines":int(width * height * density),"seed":board_seed,"region":region,"step":step,"trial":trial,"finale":step == 15 and trial<0,"crust":0 if index<6 or trial>=0 else mini(6,1+region+stratum/4)}
 
 static func upgrade(id: String) -> Dictionary:
 	for item in UPGRADES:

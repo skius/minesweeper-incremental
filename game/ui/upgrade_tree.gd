@@ -99,14 +99,14 @@ func _draw() -> void:
 		return
 	var origin := size/2+pan
 	for radius in [130,245,355,475,590]:
-		draw_arc(origin,radius*zoom,0,TAU,120,Color(Palette.MINT,0.055),1,true)
+		draw_arc(origin,radius*zoom,0,TAU,120,Color(Palette.MUTED,0.04),1,true)
 	for i in range(100):
 		var point := Vector2(fmod(i*137.4,size.x),fmod(i*263.9,size.y))
-		draw_circle(point,1,Color(Palette.MINT,0.12))
+		draw_circle(point,0.75,Color(Palette.MUTED,0.08))
 	for item in Content.UPGRADES:
 		if item.id == "lens" or not visible_node(item):
 			continue
-		var color := Color(Content.BRANCH_COLORS[item.branch])
+		var color := Palette.MUTED
 		var a := center_for(item.pre)
 		var b := center_for(item.id)
 		var owned := session.has(item.id)
@@ -115,40 +115,35 @@ func _draw() -> void:
 		curve.add_point(a,Vector2.ZERO,delta.rotated(-0.16)*0.34)
 		curve.add_point(b,-delta.rotated(0.16)*0.34,Vector2.ZERO)
 		var points := curve.get_baked_points()
-		draw_polyline(points,Color(color,0.065 if not owned else 0.17),9*zoom,true)
-		draw_polyline(points,Color(color,0.23 if not owned else 0.85),1.6*zoom,true)
-		if owned:
+		var highlighted: bool = item.id==chosen or item.id==hovered
+		draw_polyline(points,Color(Palette.INK,0.8),4.5*zoom,true)
+		draw_polyline(points,Color(Palette.MINT if highlighted else color,0.2 if not owned else 0.58),1.6*zoom,true)
+		if owned and highlighted and motion>0:
 			var spark := curve.sample_baked(fmod(time*30+item.rank*11,curve.get_baked_length()))
 			draw_circle(spark,2.5*zoom,Palette.WHITE)
 	for item in Content.UPGRADES:
 		if not visible_node(item):
 			continue
 		var p := center_for(item.id)
-		var color := Palette.MINT if item.branch<0 else Color(Content.BRANCH_COLORS[item.branch])
 		var owned := session.has(item.id)
 		var ready := session.unlock_reason(item) == "READY TO INSTALL"
 		var lit: bool = hovered == item.id or chosen == item.id
+		var color := Palette.MINT if lit else (Palette.WHITE if owned else Palette.MUTED)
 		var radius := (33 if item.id=="lens" else 25)*zoom
-		var polygon := PackedVector2Array()
-		for i in range(8):
-			polygon.append(p+Vector2.from_angle((i+0.5)*TAU/8)*radius)
-		draw_circle(p+Vector2(0,6),radius+6,Color(0,0,0,0.35))
-		if owned or ready or lit:
-			for j in range(3):
-				draw_circle(p,radius+5+j*4,Color(color,0.035))
-		draw_colored_polygon(polygon,Color("274038") if owned else Color("18262d"))
-		polygon.append(polygon[0])
-		draw_polyline(polygon,color if owned or lit else color.darkened(0.7),2 if lit else 1.3,true)
-		draw_arc(p,radius-5,-PI*0.9,-PI*0.1,20,Color(color,0.65 if owned else 0.2),1,true)
-		Palette.icon(self,item.icon,p,26*zoom,color if owned or ready or lit else color.darkened(0.4))
+		var rect := Rect2(p-Vector2.ONE*radius,Vector2.ONE*radius*2)
+		draw_rect(Rect2(rect.position+Vector2(2,4),rect.size),Color(0,0,0,0.25))
+		draw_style_box(Palette.surface(Palette.PANEL_LIGHT if owned or lit else Palette.PANEL,not owned),rect)
+		if lit:
+			draw_rect(rect.grow(3),Palette.MINT,false,1.5)
+		Palette.icon(self,item.icon,p,maxf(15,26*zoom),color if owned or ready or lit else color.darkened(0.3))
 		if owned:
-			draw_circle(p+Vector2(radius*0.75,radius*0.65),4*zoom,Palette.WHITE)
+			draw_rect(Rect2(p+Vector2(radius-4,radius-4),Vector2(4,4)),Palette.MINT)
 		elif ready:
-			draw_arc(p,radius+7,0,TAU,40,Color(color,0.4+sin(time*3)*0.15),1.3,true)
+			draw_circle(p+Vector2(radius-2,-radius+2),3,Palette.GOLD)
 		if lit:
 			var text_width := font.get_string_size(item.name,HORIZONTAL_ALIGNMENT_LEFT,-1,15).x
 			draw_string_outline(font,p+Vector2(-text_width/2,radius+25),item.name,HORIZONTAL_ALIGNMENT_LEFT,-1,15,5,Palette.INK)
 			draw_string(font,p+Vector2(-text_width/2,radius+25),item.name,HORIZONTAL_ALIGNMENT_LEFT,-1,15,Palette.WHITE)
-	if burst_age < 1.3 and burst_id != "":
+	if burst_age < 1.3 and burst_id != "" and motion>0:
 		var p := center_for(burst_id)
 		draw_arc(p,30+burst_age*95,0,TAU,64,Color(Palette.GOLD,1-burst_age/1.3),3,true)

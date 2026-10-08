@@ -1,5 +1,10 @@
 # Delivery state — Afterlight 1.1
 
+## Active revision 1.2
+Refinement is in progress: visual onboarding instead of persistent instruction sentences, one consistent retro chrome system, restrained colour, mechanically accurate upgrade demonstrations and an independent critical agent audit. Continue implementation, native visual review and gameplay validation through at least 9 October 2026, 10:00 CEST; check actual time before concluding. No timer or scheduled automation is used. The 1.1 delivery record below is the baseline, not sign-off for this revision.
+
+First refinement checkpoint: native screenshots now show pictogram input cues, footer clue inspection, shared bevelled surfaces and a neutral discovery tree. Pointer exit, open-cell keyboard focus, compass visibility and drone worker assignment are corrected. Core audit fixes cover per-layer salvage, manual-only seismic rhythm, nested-action reward ordering, shared plate-damage synergies, affordable recycler pricing and stable trial identity. Current regression result: 71,157 rules/save assertions; the latest native UI pass has 172 checks over 27 captures. These are intermediate results. Outstanding audit work includes stronger save validation, modal keyboard isolation/navigation, visually distinct icons for all fifty upgrades, truthful previews, tool impact balancing, narrow-window readability and final pacing/export revalidation.
+
 ## Current build
 The integrated revision is complete on `codex/afterlight`. Main remains unchanged pending player review. Standalone Windows and Compatibility Web exports are under ignored `builds/`; the Windows archive is `builds/Afterlight-1.1.0-Windows.zip`. No store integration was performed.
 

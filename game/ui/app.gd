@@ -79,11 +79,11 @@ func make_theme() -> void:
 	theme.set_color("font_hover_color","Button",Color.WHITE)
 	theme.set_color("font_pressed_color","Button",Palette.INK)
 	theme.set_color("font_disabled_color","Button",Palette.MUTED.darkened(0.35))
-	theme.set_stylebox("normal","Button",Palette.box(Palette.PANEL_LIGHT,9,Palette.EDGE))
-	theme.set_stylebox("hover","Button",Palette.box(Palette.PANEL_LIGHT.lightened(0.08),9,Palette.MINT.darkened(0.3)))
-	theme.set_stylebox("pressed","Button",Palette.box(Palette.MINT,9))
-	theme.set_stylebox("focus","Button",Palette.box(Color.TRANSPARENT,9,Palette.GOLD,2))
-	theme.set_stylebox("disabled","Button",Palette.box(Palette.PANEL,9,Palette.EDGE.darkened(0.35)))
+	theme.set_stylebox("normal","Button",Palette.surface(Palette.PANEL_LIGHT))
+	theme.set_stylebox("hover","Button",Palette.surface(Palette.PANEL_LIGHT.lightened(0.12)))
+	theme.set_stylebox("pressed","Button",Palette.surface(Palette.MINT,false))
+	theme.set_stylebox("focus","Button",Palette.box(Color.TRANSPARENT,0,Palette.GOLD,1))
+	theme.set_stylebox("disabled","Button",Palette.surface(Palette.PANEL,false))
 	var tooltip_style := Palette.box(Palette.PANEL_LIGHT,8,Palette.EDGE)
 	tooltip_style.content_margin_left = 12
 	tooltip_style.content_margin_right = 12
@@ -137,7 +137,7 @@ func panel(parent: Node, rect: Rect2, color: Color = Palette.PANEL, radius: int 
 	var p := Panel.new()
 	p.position = rect.position
 	p.size = rect.size
-	p.add_theme_stylebox_override("panel",Palette.box(color,radius,border))
+	p.add_theme_stylebox_override("panel",Palette.surface(color) if radius>=5 else Palette.box(color,0,border))
 	p.mouse_filter = MOUSE_FILTER_IGNORE
 	parent.add_child(p)
 	return p
@@ -150,8 +150,8 @@ func button(parent: Node, text_value: String, rect: Rect2, action: Callable, pri
 	b.mouse_default_cursor_shape = CURSOR_POINTING_HAND
 	b.add_theme_font_size_override("font_size",16)
 	if primary:
-		b.add_theme_stylebox_override("normal",Palette.box(Palette.MINT,9))
-		b.add_theme_stylebox_override("hover",Palette.box(Palette.MINT.lightened(0.12),9))
+		b.add_theme_stylebox_override("normal",Palette.surface(Palette.MINT))
+		b.add_theme_stylebox_override("hover",Palette.surface(Palette.MINT.lightened(0.12)))
 		b.add_theme_color_override("font_color",Palette.INK)
 		b.add_theme_color_override("font_hover_color",Palette.INK)
 		b.add_theme_color_override("font_focus_color",Palette.INK)
@@ -160,9 +160,13 @@ func button(parent: Node, text_value: String, rect: Rect2, action: Callable, pri
 		audio.play("click")
 		action.call()
 	)
-	b.mouse_entered.connect(func(): animate_button(b,1.018))
-	b.mouse_exited.connect(func(): animate_button(b,1.0))
 	parent.add_child(b)
+	return b
+
+func symbol_button(parent: Node, kind: String, rect: Rect2, action: Callable, help_text: String) -> Button:
+	var b := button(parent,"",rect,action)
+	icon(b,kind,Rect2(Vector2.ZERO,rect.size),Palette.WHITE,20)
+	b.tooltip_text=help_text
 	return b
 
 func animate_button(b: Button, amount: float) -> void:
@@ -272,10 +276,9 @@ func build_header() -> void:
 		icon(ui,"prism",Rect2(637,42,30,30),Palette.GOLD,22)
 		hud.light = label_at(ui,"",Rect2(676,35,130,38),24,Palette.WHITE,true)
 		if ui_stage >= 3:
-			icon(ui,"cross",Rect2(806,43,26,26),Palette.MINT,20)
+			icon(ui,"core",Rect2(806,43,26,26),Palette.MUTED,20)
 			hud.cores = label_at(ui,"",Rect2(843,38,74,32),20,Palette.MINT,true)
-	var pause_button := button(ui,"Ⅱ",Rect2(1331,29,62,53),show_pause)
-	pause_button.tooltip_text = "Pause · Esc\nSettings, field guide and records"
+	symbol_button(ui,"pause",Rect2(1331,29,62,53),show_pause,"Pause · Esc")
 
 func build_field() -> void:
 	var early := session.index < 3
@@ -305,20 +308,23 @@ func build_field() -> void:
 	if session.has("drone"):
 		icon(ui,"drone",Rect2(1292,396,68,45),accent,32)
 		hud.fleet_title = label_at(ui,str(session.drone_count()),Rect2(1360,400,45,38),22,accent,true)
-		var fleet_button := button(ui,"Ⅱ",Rect2(1310,455,62,39),toggle_drones)
-		fleet_button.tooltip_text = "Pause / resume the fleet"
+		var fleet_button := symbol_button(ui,"pause",Rect2(1310,455,62,39),toggle_drones,"Pause / resume the fleet")
 		hud.fleet_button = fleet_button
-		hud.fleet_status = paragraph(ui,"",Rect2(1284,505,126,85),13,Palette.MUTED)
+		hud.fleet_state = icon(ui,"pulse",Rect2(1326,508,30,30),Palette.MUTED,18)
+		hud.fleet_state.mouse_filter = MOUSE_FILTER_PASS
 	if session.has("cross"):
 		panel(ui,Rect2(555,760,330,4),Palette.EDGE,2)
 		hud.energy_bar = panel(ui,Rect2(555,760,330,4),accent,2)
 		hud.energy_bar.mouse_filter = MOUSE_FILTER_PASS
-	var hint_y := 740 if early else 854
-	hud.instruction = label_at(ui,"",Rect2(220,hint_y,1000,27),15,Palette.MUTED)
-	hud.instruction.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var cue := InputCue.new()
+	cue.position=Vector2(620,732 if early else 841)
+	cue.size=Vector2(200,38)
+	cue.motion=settings.motion
+	ui.add_child(cue)
+	hud.cue=cue
 	if ui_stage >= 2:
 		var tree_button := button(ui,"",Rect2(1232,777,162,72),show_tree)
-		icon(tree_button,"prism",Rect2(8,19,43,36),Palette.GOLD,30)
+		icon(tree_button,"tree",Rect2(8,19,43,36),Palette.MINT,30)
 		label_at(tree_button,"Grow",Rect2(58,20,90,32),21,Palette.WHITE,true)
 		tree_button.tooltip_text = "Discover upgrades · Tab"
 		hud.grow = tree_button
@@ -338,7 +344,7 @@ func build_tools() -> void:
 		var id: String = ids[j]
 		var b := button(ui,"",Rect2(720-width_value/2+j*83,789,70,65),func(): select_tool(id))
 		icon(b,"pulse" if id=="probe" else id,Rect2(16,14,38,38),Palette.MINT,29)
-		label_at(b,str(j+1),Rect2(6,1,20,19),10,Palette.MUTED)
+		label_at(b,str({"probe":1,"cross":2,"line":3,"nova":4,"overdrive":5}[id]),Rect2(6,1,20,19),10,Palette.MUTED)
 		b.tooltip_text = ("Pulse · aim near the opening you want\nFree; recharges in 9 seconds" if session.has("focus") else "Pulse · guaranteed safe opening\nFree; recharges in 9 seconds") if id=="probe" else Content.upgrade(id).desc
 		tool_buttons[id] = b
 		hud["charge_"+id] = label_at(b,"",Rect2(39,44,28,18),11,Palette.GOLD)
@@ -371,32 +377,29 @@ func update_hud() -> void:
 	if hud.has("chain"):
 		hud.chain.text = "×%d" % session.multiplier()
 		hud.chain.tooltip_text = "Manual chain: %d. No timer." % session.chain
-	if selected_tool != "":
-		hud.instruction.text = "Choose where to aim · Esc to cancel"
-	elif not b.generated:
-		hud.instruction.text = "Tap a tile. The first opening is safe."
-	elif settings.flag_mode:
-		hud.instruction.text = "Flag mode · F to reveal again"
-	elif session.index == 0 and session.manual_actions < 4:
-		hud.instruction.text = "Hover a number to read it. Right-click to flag."
-	else:
-		hud.instruction.text = ""
+	hud.cue.visible = not session.finished and not session.layer_ready and (selected_tool!="" or settings.flag_mode or (session.index==0 and session.manual_actions<4))
+	hud.cue.mode = "aim" if selected_tool!="" else ("flag" if b.generated or settings.flag_mode else "reveal")
+	hud.cue.keyboard = board_view.keyboard_cell>=0
+	hud.cue.tooltip_text = "Aim · Esc cancels" if selected_tool!="" else ("Flag · right mouse / F" if b.generated else "Reveal · left mouse / Enter")
 	for id in tool_buttons:
 		var btool: Button = tool_buttons[id]
-		btool.disabled = (session.probe_charge<1 if id=="probe" else session.energy<session.tool_cost(id)) or session.finished or session.layer_ready
+		btool.disabled = (session.probe_charge<1 if id=="probe" else session.energy<session.minimum_tool_cost(id)) or session.finished or session.layer_ready
 		var caption: Label = hud["charge_"+id]
 		caption.text = str(int(session.probe_charge)) if id=="probe" and session.has("reservoir") else ("%ds" % ceili((1-session.probe_charge)*9) if id=="probe" and session.probe_charge<1 else (str(int(session.tool_cost(id))) if id!="probe" else ""))
-		btool.add_theme_stylebox_override("normal",Palette.box(Palette.MINT.darkened(0.72) if selected_tool==id else Palette.PANEL_LIGHT,14,Palette.MINT if selected_tool==id else Palette.EDGE))
+		btool.add_theme_stylebox_override("normal",Palette.surface(Palette.MINT.darkened(0.55) if selected_tool==id else Palette.PANEL_LIGHT,selected_tool!=id))
 	if hud.has("fleet_title"):
 		hud.fleet_title.text = str(session.drone_count())
-		hud.fleet_status.text = "Waiting for\nan opening" if session.drone_status == "Waiting for a new opening" else ""
-		hud.fleet_button.text = "Ⅱ" if session.drones_enabled else "▶"
+		hud.fleet_state.visible = session.drone_status == "Waiting for a new opening"
+		hud.fleet_state.tooltip_text = "Fleet needs a new opening"
+		var fleet_glyph := hud.fleet_button.get_child(0) as Glyph
+		fleet_glyph.kind = "pause" if session.drones_enabled else "play"
+		fleet_glyph.queue_redraw()
 	if hud.has("grow"):
 		var ready := 0
 		for item in Content.UPGRADES:
 			if session.unlock_reason(item)=="READY TO INSTALL":
 				ready += 1
-		hud.grow.add_theme_stylebox_override("normal",Palette.box(Color("343a2d") if ready else Palette.PANEL,17,Palette.GOLD if ready else Palette.EDGE))
+		hud.grow.add_theme_stylebox_override("normal",Palette.surface(Palette.PANEL_LIGHT.lightened(0.07) if ready else Palette.PANEL))
 	board_view.active_tool = selected_tool
 	board_view.blocked = modal_kind != "" or session.finished or session.layer_ready
 
@@ -417,12 +420,20 @@ func show_tree() -> void:
 	p.add_child(upgrade_tree)
 	label_at(p,"Make it yours.",Rect2(38,29,540,49),32,Palette.WHITE,true)
 	label_at(p,"%d / 50" % session.upgrades.size(),Rect2(984,36,120,32),17,Palette.MUTED)
-	label_at(p,"%s ◇   %d ✧" % [format_number(session.credits),session.cores],Rect2(1110,36,196,32),18,Palette.GOLD)
+	icon(p,"prism",Rect2(1106,40,24,24),Palette.GOLD,19)
+	label_at(p,format_number(session.credits),Rect2(1135,36,93,32),18,Palette.WHITE)
+	icon(p,"core",Rect2(1227,40,24,24),Palette.MUTED,19)
+	label_at(p,str(session.cores),Rect2(1257,36,50,32),18,Palette.WHITE)
 	tree_detail = Control.new()
 	tree_detail.position = Vector2(1024,135)
 	tree_detail.size = Vector2(314,627)
 	p.add_child(tree_detail)
-	label_at(p,"Drag to explore · Scroll to zoom · Arrows + Enter",Rect2(38,799,790,25),13,Palette.MUTED)
+	var cue := InputCue.new()
+	cue.mode="tree"
+	cue.position=Vector2(38,786)
+	cue.size=Vector2(280,42)
+	cue.tooltip_text="Drag to pan · scroll to zoom\nArrow keys select · Enter connects"
+	p.add_child(cue)
 	tree_focus(tree_selected)
 	upgrade_tree.grab_focus()
 
@@ -434,7 +445,7 @@ func tree_focus(id: String) -> void:
 		return
 	wipe(tree_detail)
 	var item := Content.upgrade(id)
-	var color := Palette.MINT if item.branch<0 else Color(Content.BRANCH_COLORS[item.branch])
+	var color := Palette.MINT
 	label_at(tree_detail,"ORIGIN" if item.branch<0 else Content.BRANCH_NAMES[item.branch],Rect2(0,0,314,26),12,color,true)
 	var preview := DiscoveryPreview.new()
 	preview.position = Vector2(0,49)
@@ -472,21 +483,9 @@ func on_cell(i: int, right: bool, keyboard_reveal: bool = false) -> void:
 	after_action()
 
 func on_hover(i: int) -> void:
-	if session == null or i < 0:
-		board_view.tooltip_text = ""
-		return
-	var b := session.board
-	if b.cells[i] == MineBoard.OPEN and b.clues[i] > 0:
-		var flags := 0
-		for n in b.neighbours(i):
-			flags += 1 if b.cells[n] in [MineBoard.FLAG,MineBoard.HIT] else 0
-		board_view.tooltip_text = "%d neighbouring charge%s · %d flagged" % [b.clues[i],"" if b.clues[i]==1 else "s",flags]
-		if flags==b.clues[i]:
-			board_view.tooltip_text += "\nClick to open the rest"
-	elif b.plates[i] > 0:
-		board_view.tooltip_text = "%d plate layers\nRead the clues before excavating" % b.plates[i]
-	else:
-		board_view.tooltip_text = "Right-click to flag" if session.index<2 else ""
+	# Clue/flag/plate counts are drawn in the terminal's footer, away from the
+	# puzzle. A popup must never cover the neighbouring cells being inspected.
+	board_view.tooltip_text = ""
 
 func select_tool(id: String) -> void:
 	if session.finished:
@@ -542,6 +541,8 @@ func consume_events() -> void:
 			"excavate":
 				var p := board_view.position+board_view.cell_position(event.cell)
 				board_view.animations[event.cell] = 0
+				if event.get("source","")=="drone":
+					board_view.visit_drone(event.cell)
 				effects.burst(p,Palette.GOLD,6 if event.broken else 3)
 				audio.play("flag",0.8 if not event.broken else 1.2)
 			"layer_complete":
@@ -650,7 +651,7 @@ func dialog(title: String, dimensions: Vector2, kind: String) -> Panel:
 	panel(p,Rect2(5,5,dimensions.x-10,76),Color("526e9b"),0,Color("869dbc"))
 	p.mouse_filter = MOUSE_FILTER_STOP
 	label_at(p,title,Rect2(38,28,dimensions.x-125,50),30,Palette.WHITE,true)
-	button(p,"×",Rect2(dimensions.x-71,31,38,38),close_modal)
+	symbol_button(p,"close",Rect2(dimensions.x-71,31,38,38),close_modal,"Close · Esc")
 	rule(p,Vector2(38,87),dimensions.x-76)
 	if board_view:
 		board_view.blocked = true
@@ -778,7 +779,7 @@ func show_completion() -> void:
 	var y := 338 if region_end else 190
 	icon(p,"prism",Rect2(38,y,42,42),Palette.GOLD,28)
 	label_at(p,"+%s" % format_number(reward.earned),Rect2(95,y-3,240,44),31,Palette.GOLD,true)
-	icon(p,"cross",Rect2(415,y,40,40),accent,26)
+	icon(p,"core",Rect2(415,y,40,40),Palette.MUTED,26)
 	label_at(p,"+%d" % reward.cores,Rect2(466,y-3,202,44),31,accent,true)
 	button(p,"Grow",Rect2(38,y+78,253,56),show_tree)
 	var next := button(p,"Beyond dawn →" if ending else ("Return →" if session.trial>=0 else "Next site →"),Rect2(309,y+78,361,56),next_expedition,true)

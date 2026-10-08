@@ -89,7 +89,7 @@ func run(root_app: Control) -> void:
 		mouse.position=app.board_view.position+app.board_view.cell_position(hovered_clue)
 		get_viewport().push_input(mouse,true)
 		await frames(70)
-		check(app.board_view.tooltip_text.contains("neighbouring charge"),"clue explanation available on hover")
+		check(app.board_view.hover==hovered_clue and app.board_view.tooltip_text.is_empty(),"clue inspection uses footer without covering neighbours")
 		await shot("v2_26_clue_hover")
 	var safety := 0
 	while not app.session.finished and safety<100:

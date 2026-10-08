@@ -215,6 +215,7 @@ func run() -> void:
 			visited.append(cursor.id)
 			cursor=Content.upgrade(cursor.pre)
 		check(cursor.id=="lens","upgrade path reaches origin: "+item.id)
+	load("res://tests/upgrade_regressions.gd").run(check)
 	if failures.is_empty():
 		print("AFTERLIGHT PASS: %d rule and persistence checks" % checks)
 	else:

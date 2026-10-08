@@ -10,6 +10,12 @@ const MUTED = Color("aeb8c8")
 const MINT = Color("9ae4be")
 const GOLD = Color("f5ca7a")
 const CORAL = Color("f4988f")
+const FRAME = Color("67758a")
+const TITLE = Color("536f98")
+const TILE = Color("8493a5")
+const GLASS = Color("202a3b")
+const FLAG = Color("583c54")
+static var surface_cache: Dictionary = {}
 const CLUES = [Color("779797"),Color("83c9ed"),Color("92dbb0"),Color("efad7b"),Color("bfa8eb"),Color("ed9bb7"),Color("e1d08b"),Color("eeeecc"),Color("ffffff")]
 
 static func box(color: Color, radius: int = 12, border: Color = Color.TRANSPARENT, border_width: int = 1) -> StyleBoxFlat:
@@ -27,9 +33,81 @@ static func box(color: Color, radius: int = 12, border: Color = Color.TRANSPAREN
 		s.shadow_offset = Vector2(0,4)
 	return s
 
+# One procedural nine-patch gives buttons and window panels the same physical edge.
+# It stays crisp at different control sizes and is cached across the whole interface.
+static func surface(face: Color, raised: bool = true) -> StyleBoxTexture:
+	var key := face.to_html()+str(raised)
+	if surface_cache.has(key):
+		return surface_cache[key]
+	var pixels := Image.create(12,12,false,Image.FORMAT_RGBA8)
+	pixels.fill(face)
+	var light := face.lightened(0.32)
+	var shade := face.darkened(0.52)
+	for y in range(12):
+		for x in range(12):
+			var c := face
+			if x==0 or y==0 or x==11 or y==11:
+				c=Color("141c2b")
+			elif x<=2 or y<=2:
+				c=light if raised else shade
+			elif x>=9 or y>=9:
+				c=shade if raised else light
+			pixels.set_pixel(x,y,c)
+	var style := StyleBoxTexture.new()
+	style.texture=ImageTexture.create_from_image(pixels)
+	style.set_texture_margin_all(4)
+	style.set_content_margin_all(6)
+	surface_cache[key]=style
+	return style
+
+static func mouse(canvas: CanvasItem, center: Vector2, button: int, color: Color, unit: float = 1.0) -> void:
+	var outer := Rect2(center-Vector2(10,14)*unit,Vector2(20,28)*unit)
+	canvas.draw_style_box(box(Color.TRANSPARENT,4,color,1),outer)
+	canvas.draw_line(center+Vector2(0,-13)*unit,center+Vector2(0,-2)*unit,color,1.3,true)
+	canvas.draw_line(center+Vector2(-9,-1)*unit,center+Vector2(9,-1)*unit,color,1.3,true)
+	if button in [1,2]:
+		canvas.draw_rect(Rect2(center+Vector2(-7 if button==1 else 2,-11)*unit,Vector2(5,8)*unit),color)
+	elif button==3:
+		canvas.draw_line(center+Vector2(0,-9)*unit,center+Vector2(0,-5)*unit,color,3,true)
+
+static func keycap(canvas: CanvasItem, text: String, rect: Rect2, color: Color) -> void:
+	canvas.draw_style_box(surface(PANEL_LIGHT),rect)
+	var font := ThemeDB.fallback_font
+	var width := font.get_string_size(text,HORIZONTAL_ALIGNMENT_LEFT,-1,12).x
+	canvas.draw_string(font,rect.get_center()+Vector2(-width/2,4),text,HORIZONTAL_ALIGNMENT_LEFT,-1,12,color)
+
 static func icon(canvas: CanvasItem, kind: String, center: Vector2, size_value: float, color: Color) -> void:
 	var r := size_value * 0.5
 	match kind:
+		"pause":
+			for side in [-1,1]:
+				canvas.draw_rect(Rect2(center+Vector2(side*r*0.43-r*0.15,-r*0.7),Vector2(r*0.3,r*1.4)),color)
+		"play":
+			canvas.draw_colored_polygon(PackedVector2Array([center+Vector2(-r*0.6,-r*0.85),center+Vector2(r*0.8,0),center+Vector2(-r*0.6,r*0.85)]),color)
+		"close":
+			canvas.draw_line(center+Vector2(-r,-r)*0.65,center+Vector2(r,r)*0.65,color,2,true)
+			canvas.draw_line(center+Vector2(-r,r)*0.65,center+Vector2(r,-r)*0.65,color,2,true)
+		"arrow":
+			canvas.draw_line(center+Vector2(-r,0),center+Vector2(r,0),color,1.5,true)
+			canvas.draw_polyline(PackedVector2Array([center+Vector2(r*0.4,-r*0.6),center+Vector2(r,0),center+Vector2(r*0.4,r*0.6)]),color,1.5,true)
+		"core":
+			canvas.draw_rect(Rect2(center-Vector2.ONE*r*0.58,Vector2.ONE*r*1.16),color,false,1.8)
+			canvas.draw_rect(Rect2(center-Vector2.ONE*r*0.22,Vector2.ONE*r*0.44),color)
+			for side in [-1,1]:
+				for offset in [-0.3,0.3]:
+					canvas.draw_line(center+Vector2(side*r*0.6,offset*r),center+Vector2(side*r,offset*r),color,1.5,true)
+					canvas.draw_line(center+Vector2(offset*r,side*r*0.6),center+Vector2(offset*r,side*r),color,1.5,true)
+		"mine":
+			canvas.draw_circle(center,r*0.55,color)
+			for angle in range(8):
+				var direction := Vector2.from_angle(angle*TAU/8)
+				canvas.draw_line(center+direction*r*0.35,center+direction*r*0.9,color,1.4,true)
+			canvas.draw_circle(center+Vector2(-r*0.18,-r*0.18),r*0.13,INK)
+		"tree":
+			for p in [Vector2(-0.65,-0.6),Vector2(0.65,-0.6),Vector2(0,0.7)]:
+				canvas.draw_line(center,center+p*r,color,1.5,true)
+				canvas.draw_rect(Rect2(center+p*r-Vector2.ONE*r*0.22,Vector2.ONE*r*0.44),color,false,1.5)
+			canvas.draw_circle(center,r*0.17,color)
 		"flag":
 			canvas.draw_line(center + Vector2(-r * 0.3, r), center + Vector2(-r * 0.3, -r), color, 2, true)
 			canvas.draw_colored_polygon(PackedVector2Array([center + Vector2(-r*0.3,-r), center + Vector2(r*0.8,-r*0.55), center + Vector2(-r*0.3,0)]), color)

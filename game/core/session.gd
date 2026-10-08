@@ -7,6 +7,8 @@ var stratum: int = 0
 var layer_ready: bool = false
 var descent_clock: float = 0
 var excavations: int = 0
+var manual_excavations: int = 0
+var action_depth: int = 0
 var cascade_guard: bool = false
 var trial: int = -1
 var credits: int = 0
@@ -46,7 +48,7 @@ func has(id: String) -> bool:
 	return upgrades.has(id)
 
 func region() -> int:
-	return Content.region_for(index)
+	return trial/2 if trial>=0 else Content.region_for(index)
 
 func capacity() -> float:
 	return 40.0 if has("supercap") else (24.0 if has("nova") else (18.0 if has("battery") else 10.0))
@@ -144,6 +146,27 @@ func add_light(amount: int) -> void:
 	board_earned += amount
 
 func reveal(i: int, source: String = "manual") -> void:
+	action_depth+=1
+	_reveal(i,source)
+	action_depth-=1
+	check_completion()
+
+func break_plates(i: int, power: int, source: String) -> int:
+	var removed := mini(power,board.plates[i])
+	if removed<=0:
+		return 0
+	board.plates[i]-=removed
+	excavations+=1
+	if source=="manual":
+		manual_excavations+=1
+	add_light(removed*(1+region()))
+	if has("crucible") or (source=="manual" and has("kinetic")):
+		energy=minf(capacity(),energy+removed*0.65)
+		probe_charge=minf(probe_capacity(),probe_charge+0.08)
+	events.append({"type":"excavate","cell":i,"amount":removed,"broken":board.plates[i]==0,"source":source})
+	return removed
+
+func _reveal(i: int, source: String = "manual") -> void:
 	if finished or layer_ready or i < 0 or i >= board.cells.size():
 		return
 	if board.cells[i] == MineBoard.OPEN:
@@ -153,18 +176,12 @@ func reveal(i: int, source: String = "manual") -> void:
 	var first := not board.generated
 	if board.generated and board.cells[i] == MineBoard.HIDDEN and board.plates[i] > 0:
 		var power := excavation_power(source)
-		var removed := mini(power,board.plates[i])
-		board.plates[i] = maxi(0,board.plates[i]-power)
-		excavations += 1
-		add_light(removed * (1 + region()))
-		if has("crucible") or (source == "manual" and has("kinetic")):
-			energy = minf(capacity(),energy+removed*0.65)
-			probe_charge = minf(probe_capacity(),probe_charge+0.08)
-		events.append({"type":"excavate","cell":i,"amount":removed,"broken":board.plates[i]==0})
+		break_plates(i,power,source)
 		if board.plates[i] == 0 and has("fracture") and source == "manual":
 			for n in board.neighbours(i):
-				board.plates[n] = maxi(0,board.plates[n]-1)
-		if source == "manual" and has("seismic") and excavations%6 == 0:
+				break_plates(n,1,"fracture")
+		if source == "manual" and has("seismic") and manual_excavations%6 == 0:
+			events.append({"type":"seismic","cell":i})
 			for n in cross_cells(i):
 				if board.mines[n] == 0:
 					reveal(n,"echo")
@@ -248,6 +265,12 @@ func flag(i: int) -> void:
 		events.append({"type":"flag","cell":i,"auto":false})
 
 func chord(i: int) -> void:
+	action_depth+=1
+	_chord(i)
+	action_depth-=1
+	check_completion()
+
+func _chord(i: int) -> void:
 	if finished:
 		return
 	var targets := board.chord_targets(i)
@@ -300,6 +323,21 @@ func cross_cells(i: int) -> Array[int]:
 func tool_cost(id: String) -> float:
 	return {"probe":0.0,"cross":6.0,"line":10.0,"nova":16.0,"overdrive":12.0}.get(id, 999.0)
 
+func minimum_tool_cost(id: String) -> float:
+	return 2.0 if has("recycler") and id in ["cross","line","nova"] else tool_cost(id)
+
+func effective_tool_cost(id: String, i: int) -> float:
+	var cost := tool_cost(id)
+	if not has("recycler") or id not in ["cross","line","nova"]:
+		return cost
+	var targets := tool_cells(id,i)
+	if targets.is_empty():
+		return cost
+	var open_tiles := 0
+	for n in targets:
+		open_tiles+=1 if board.cells[n]==MineBoard.OPEN else 0
+	return maxf(2,cost*(1-float(open_tiles)/targets.size()))
+
 func tool_cells(id: String, i: int) -> Array[int]:
 	var result: Array[int] = []
 	if i < 0 or i >= board.cells.size():
@@ -322,6 +360,13 @@ func tool_cells(id: String, i: int) -> Array[int]:
 	return result
 
 func use_tool(id: String, i: int = -1) -> bool:
+	action_depth+=1
+	var used := _use_tool(id,i)
+	action_depth-=1
+	check_completion()
+	return used
+
+func _use_tool(id: String, i: int = -1) -> bool:
 	if finished or layer_ready or (id != "probe" and not has(id)):
 		return false
 	if trial >= 0 and trial % 2 == 0 and id != "probe":
@@ -336,7 +381,7 @@ func use_tool(id: String, i: int = -1) -> bool:
 			probe_one("tool",i if has("focus") else -1)
 		events.append({"type":"tool","id":id,"cell":i})
 		return true
-	if energy < tool_cost(id):
+	if energy < effective_tool_cost(id,i):
 		events.append({"type":"tip","text":"More energy needed. Reveal safe tiles or let the capacitor recharge."})
 		return false
 	if id == "overdrive":
@@ -356,18 +401,13 @@ func use_tool(id: String, i: int = -1) -> bool:
 	if not any:
 		events.append({"type":"tip","text":"Already surveyed. Aim at covered ground; no energy was spent."})
 		return false
-	var refund := 0.0
-	if has("recycler"):
-		for n in targets:
-			if board.cells[n] == MineBoard.OPEN:
-				refund += tool_cost(id)/targets.size()
-	energy -= maxf(2,tool_cost(id)-refund)
+	energy -= effective_tool_cost(id,i)
 	for n in targets:
 		if has("harvester") and board.mines[n] == 1 and board.cells[n] == MineBoard.HIDDEN:
 			board.toggle_flag(n)
 			events.append({"type":"flag","cell":n,"auto":true})
 		if id == "nova" and has("aftershock"):
-			board.plates[n] = 0
+			break_plates(n,board.plates[n],"blast")
 		if board.mines[n] == 0:
 			if board.cells[n] == MineBoard.FLAG:
 				board.cells[n] = MineBoard.HIDDEN
@@ -395,17 +435,17 @@ func probe_one(source: String, target: int = -1) -> void:
 	if cell >= 0:
 		if board.cells[cell] == MineBoard.FLAG:
 			board.cells[cell] = MineBoard.HIDDEN
-		board.plates[cell] = 0 # A pulse drills straight through to its safe target.
+		break_plates(cell,board.plates[cell],"pulse")
 		reveal(cell, source)
 
 func tick(delta: float) -> void:
 	if layer_ready:
-		if has("autodescent"):
+		if has("autodescent") and drones_enabled:
 			descent_clock += delta
 			if descent_clock >= 1.2:
 				advance_layer()
 		return
-	if not board.generated and has("launchpad") and drones_enabled:
+	if not board.generated and has("launchpad") and drones_enabled and not (trial>=0 and trial%2==0):
 		drone_clock += delta
 		if drone_clock >= 1.0:
 			probe_one("drone")
@@ -454,8 +494,17 @@ func drone_cycle() -> void:
 			return
 
 func check_completion() -> void:
-	if finished or layer_ready or not board.completed():
+	if action_depth>0 or finished or layer_ready or not board.completed():
 		return
+	var correct_flags := 0
+	for i in range(board.cells.size()):
+		if board.cells[i] == MineBoard.FLAG and board.mines[i] == 1:
+			correct_flags += 1
+	total_flags += correct_flags
+	var flag_reward := correct_flags*8 if has("salvage") else 0
+	add_light(flag_reward)
+	if flag_reward>0:
+		events.append({"type":"salvage","amount":flag_reward,"flags":correct_flags})
 	if stratum+1 < Content.strata_for(index,trial):
 		layer_ready = true
 		descent_clock = 0
@@ -466,13 +515,8 @@ func check_completion() -> void:
 		events.append({"type":"layer_complete"})
 		return
 	finished = true
-	var correct_flags := 0
-	for i in range(board.cells.size()):
-		if board.cells[i] == MineBoard.FLAG and board.mines[i] == 1:
-			correct_flags += 1
-	total_flags += correct_flags
 	var rating := 3 if strikes == 0 else (2 if strikes <= 2 else 1)
-	var bonus := 70 + index * 12 + (correct_flags * 8 if has("salvage") else 0)
+	var bonus := 70 + index * 12
 	var reward_cores := 1 + (1 if strikes == 0 and has("bounty") else 0)
 	if index % Content.REGION_LENGTH == 15 and trial < 0:
 		bonus *= 2
@@ -489,11 +533,11 @@ func check_completion() -> void:
 	add_light(bonus)
 	if has("aurora"):
 		energy = capacity()
-	last_reward = {"bonus":bonus,"cores":reward_cores,"rating":rating,"flags":correct_flags,"earned":board_earned,"seconds":board_seconds,"region_end":index % Content.REGION_LENGTH == 15 and trial < 0}
+	last_reward = {"bonus":bonus+flag_reward,"cores":reward_cores,"rating":rating,"flags":correct_flags,"earned":board_earned,"seconds":board_seconds,"region_end":index % Content.REGION_LENGTH == 15 and trial < 0}
 	events.append({"type":"complete","reward":last_reward.duplicate()})
 
 func to_dict() -> Dictionary:
-	return {"version":2,"stratum":stratum,"layer_ready":layer_ready,"excavations":excavations,"index":index,"trial":trial,"credits":credits,"cores":cores,"upgrades":upgrades,"medals":medals,"trial_medals":trial_medals,"total_light":total_light,"total_reveals":total_reveals,"total_flags":total_flags,"total_drone":total_drone,"total_strikes":total_strikes,"play_seconds":play_seconds,"board_seconds":board_seconds,"energy":energy,"probe_charge":probe_charge,"drone_clock":drone_clock,"overclock":overclock,"chain":chain,"strikes":strikes,"manual_actions":manual_actions,"board_earned":board_earned,"finished":finished,"completed_campaign":completed_campaign,"drones_enabled":drones_enabled,"last_reward":last_reward,"paid_flags":paid_flags,"seen_intro":seen_intro,"livery":livery,"board":board.to_dict()}
+	return {"version":2,"stratum":stratum,"layer_ready":layer_ready,"excavations":excavations,"manual_excavations":manual_excavations,"index":index,"trial":trial,"credits":credits,"cores":cores,"upgrades":upgrades,"medals":medals,"trial_medals":trial_medals,"total_light":total_light,"total_reveals":total_reveals,"total_flags":total_flags,"total_drone":total_drone,"total_strikes":total_strikes,"play_seconds":play_seconds,"board_seconds":board_seconds,"energy":energy,"probe_charge":probe_charge,"drone_clock":drone_clock,"overclock":overclock,"chain":chain,"strikes":strikes,"manual_actions":manual_actions,"board_earned":board_earned,"finished":finished,"completed_campaign":completed_campaign,"drones_enabled":drones_enabled,"last_reward":last_reward,"paid_flags":paid_flags,"seen_intro":seen_intro,"livery":livery,"board":board.to_dict()}
 
 static func from_dict(data: Dictionary) -> GameSession:
 	if int(data.get("version", 0)) not in [1,2] or not data.get("board") is Dictionary:
@@ -507,7 +551,7 @@ static func from_dict(data: Dictionary) -> GameSession:
 	if not data.get("upgrades") is Array or not data.get("medals") is Dictionary or not data.get("trial_medals") is Dictionary:
 		return null
 	var result := GameSession.new()
-	for key in ["stratum","layer_ready","excavations","index","trial","credits","cores","medals","trial_medals","total_light","total_reveals","total_flags","total_drone","total_strikes","play_seconds","board_seconds","energy","probe_charge","drone_clock","overclock","chain","strikes","manual_actions","board_earned","finished","completed_campaign","drones_enabled","last_reward","seen_intro","livery"]:
+	for key in ["stratum","layer_ready","excavations","manual_excavations","index","trial","credits","cores","medals","trial_medals","total_light","total_reveals","total_flags","total_drone","total_strikes","play_seconds","board_seconds","energy","probe_charge","drone_clock","overclock","chain","strikes","manual_actions","board_earned","finished","completed_campaign","drones_enabled","last_reward","seen_intro","livery"]:
 		if data.has(key):
 			result.set(key, data[key])
 	for id in data.upgrades:
