@@ -61,6 +61,7 @@ func run() -> void:
 	s.credits = 1000
 	s.cores = 10
 	check(not s.buy("nova"), "rank gating")
+	s.buy("lens")
 	check(s.buy("probe2") and not s.buy("probe2"), "buy exactly once")
 	s.use_tool("probe")
 	check(not s.use_tool("probe"), "probe cooldown enforced")
@@ -112,6 +113,8 @@ func run() -> void:
 	fixture.index = 95
 	fixture.start_board()
 	while not fixture.finished:
+		if fixture.layer_ready:
+			fixture.advance_layer()
 		fixture.probe_one("tool")
 	check(fixture.last_reward.region_end,"last relay has ending")
 	var finish_restore := GameSession.from_dict(fixture.to_dict())
@@ -120,6 +123,8 @@ func run() -> void:
 	check(fixture.completed_campaign and fixture.index == 96,"endless begins after final relay")
 	check(fixture.begin_trial(0),"mastery accessible from fresh endless board")
 	while not fixture.finished:
+		if fixture.layer_ready:
+			fixture.advance_layer()
 		fixture.probe_one("tool")
 	fixture.next_board()
 	check(fixture.index == 96 and fixture.trial == -1 and not fixture.finished,"trial returns to same pending campaign field")
@@ -139,7 +144,77 @@ func run() -> void:
 		if item.pre != "":
 			check(not Content.upgrade(item.pre).is_empty(), "prerequisite exists")
 		count += 1
-	check(count == 24, "24 qualitative upgrades")
+	check(count == 50, "50 branching upgrades")
+	# Depth must survive reloads and cannot pay out twice.
+	var deep := GameSession.new()
+	deep.index = 20
+	deep.start_board()
+	deep.reveal(40)
+	check(deep.board.plates.count(2)>0,"deeper sites introduce visible plating")
+	while not deep.layer_ready:
+		deep.probe_one("tool")
+	var earned := deep.credits
+	deep.check_completion()
+	check(deep.credits==earned and not deep.finished,"stratum payout once, not final site")
+	var roundtrip := GameSession.from_dict(JSON.parse_string(JSON.stringify(deep.to_dict())))
+	check(roundtrip!=null and roundtrip.layer_ready,"descent checkpoint roundtrip")
+	check(deep.advance_layer() and deep.stratum==1 and not deep.advance_layer(),"descend exactly once")
+	check(not deep.board.generated,"descent creates distinct fresh puzzle")
+	deep.reveal(40)
+	var plated := -1
+	for i in range(deep.board.cells.size()):
+		if deep.board.plates[i]>0 and deep.board.mines[i]==0:
+			plated=i
+			break
+	var before_plate: int = deep.board.plates[plated]
+	deep.reveal(plated)
+	check(deep.board.plates[plated]==before_plate-1 and deep.board.cells[plated]==MineBoard.HIDDEN,"unupgraded excavation takes one plate layer")
+	deep.upgrades.append("drill")
+	deep.reveal(plated)
+	check(deep.board.cells[plated]==MineBoard.OPEN,"diamond drill breaks through remaining crust")
+	var clone_deep := GameSession.from_dict(deep.to_dict())
+	check(clone_deep!=null and clone_deep.board.plates==deep.board.plates,"partially excavated plates persist")
+	var plain_cross := deep.cross_cells(80).size()
+	deep.upgrades.append("diagonal")
+	check(deep.cross_cells(80).size()>plain_cross,"diagonal upgrade changes beam footprint")
+	var plain_line := deep.tool_cells("line",80).size()
+	deep.upgrades.append("vertical")
+	check(deep.tool_cells("line",80).size()>plain_line,"meridian adds full column")
+	var plain_nova := deep.tool_cells("nova",80).size()
+	deep.upgrades.append("aftershock")
+	check(deep.tool_cells("nova",80).size()>plain_nova,"event horizon grows nova")
+	deep.upgrades.append("reservoir")
+	deep.probe_charge=2
+	check(deep.use_tool("probe") and deep.use_tool("probe") and deep.probe_charge<1,"reservoir stores two separate pulses")
+	deep.upgrades.append("supercap")
+	check(deep.capacity()==40,"storm capacitor enables combined beam budget")
+	deep.upgrades.append("excavator")
+	deep.upgrades.append("perforator")
+	check(deep.excavation_power("drone")==3 and deep.excavation_power("tool")==4,"specialised excavation strength")
+	deep.upgrades.append("legacy")
+	check(deep.excavation_power("manual")==6 and deep.excavation_power("drone")==6,"endgame breaks deep plating in one visit")
+	deep.chain=24
+	deep.start_board()
+	check(deep.chain==24,"unbroken current carries chain between sites")
+	# Existing 1.0 saves remain readable, including an exact in-progress field.
+	var old := GameSession.new()
+	old.reveal(20)
+	var old_data := old.to_dict()
+	old_data.version=1
+	old_data.erase("stratum")
+	old_data.erase("layer_ready")
+	old_data.board.erase("plates")
+	old_data.board.erase("crust")
+	var migrated := GameSession.from_dict(old_data)
+	check(migrated!=null and migrated.board.cells==old.board.cells and migrated.stratum==0,"v1 save migrates without resetting field")
+	# Every tree path must reach the origin without a cycle.
+	for item in Content.UPGRADES:
+		var visited: Array[String]=[]
+		var cursor: Dictionary=item
+		while cursor.pre!="" and not visited.has(cursor.id):
+			visited.append(cursor.id)
+			cursor=Content.upgrade(cursor.pre)
+		check(cursor.id=="lens","upgrade path reaches origin: "+item.id)
 	if failures.is_empty():
 		print("AFTERLIGHT PASS: %d rule and persistence checks" % checks)
 	else:

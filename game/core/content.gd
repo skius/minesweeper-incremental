@@ -1,7 +1,7 @@
 class_name Content
 extends RefCounted
 
-const VERSION = "1.0.0"
+const VERSION = "1.1.0"
 const REGION_LENGTH = 16
 const CAMPAIGN_LENGTH = 96
 const REGIONS = [
@@ -15,30 +15,56 @@ const REGIONS = [
 
 # Each purchase changes a rule, ability, information source or automation behaviour.
 const UPGRADES = [
-	{"id":"lens", "name":"Survey lens", "group":0, "cost":40, "cores":0, "rank":0, "pre":"", "icon":"lens", "desc":"Hover a clue to outline its neighbours and count your flags."},
-	{"id":"probe2", "name":"Twin pulse", "group":0, "cost":140, "cores":1, "rank":1, "pre":"", "icon":"pulse", "desc":"Your free probe opens two safe tiles instead of one."},
-	{"id":"cross", "name":"Crossbeam", "group":0, "cost":260, "cores":2, "rank":3, "pre":"", "icon":"cross", "desc":"New tool: safely sweep a cross through the selected tile. Costs 6 energy."},
-	{"id":"battery", "name":"Seed capacitor", "group":0, "cost":420, "cores":2, "rank":6, "pre":"", "icon":"battery", "desc":"Store 18 energy. Every uncovered pocket refills 4 energy."},
-	{"id":"line", "name":"Horizon beam", "group":0, "cost":950, "cores":3, "rank":13, "pre":"cross", "icon":"line", "desc":"New tool: reveal every safe tile in the selected row. Costs 10 energy."},
-	{"id":"prism", "name":"Prism echo", "group":0, "cost":1700, "cores":3, "rank":22, "pre":"probe2", "icon":"prism", "desc":"Crystal pockets also open a safe neighbour. Probe opens three tiles."},
-	{"id":"nova", "name":"Nova charge", "group":0, "cost":3800, "cores":5, "rank":43, "pre":"line", "icon":"nova", "desc":"New tool: sweep a safe 5 by 5 area. Costs 16 energy; capacity becomes 24."},
-	{"id":"resonance", "name":"Resonance", "group":0, "cost":6200, "cores":5, "rank":61, "pre":"nova", "icon":"pulse", "desc":"Every tool reveal earns energy back. Smart sweeps skip already open ground."},
-	{"id":"drone", "name":"Scout drone", "group":1, "cost":220, "cores":2, "rank":2, "pre":"", "icon":"drone", "desc":"A companion opens one logically safe tile every 3 seconds. Never guesses."},
-	{"id":"flagger", "name":"Cartographer", "group":1, "cost":450, "cores":2, "rank":5, "pre":"drone", "icon":"flag", "desc":"Your drone also marks mines proven by adjacent clues."},
-	{"id":"pair", "name":"Wingmate", "group":1, "cost":850, "cores":3, "rank":11, "pre":"drone", "icon":"drone", "desc":"A second drone joins. Both act each cycle, with independent deductions."},
-	{"id":"logic", "name":"Pattern engine", "group":1, "cost":1600, "cores":3, "rank":19, "pre":"flagger", "icon":"prism", "desc":"Drones compare overlapping clue groups to find subtler safe moves."},
-	{"id":"fleet", "name":"Fieldwork fleet", "group":1, "cost":2800, "cores":4, "rank":31, "pre":"pair", "icon":"fleet", "desc":"Four drones work at once. Recovered pockets briefly accelerate the fleet."},
-	{"id":"oracle", "name":"Oracle beacon", "group":1, "cost":4400, "cores":5, "rank":47, "pre":"logic", "icon":"lens", "desc":"When logic stalls, the fleet spends 3 energy to probe safe ground."},
-	{"id":"swarm", "name":"Daybreak swarm", "group":1, "cost":7000, "cores":6, "rank":65, "pre":"fleet", "icon":"fleet", "desc":"Eight drones. Each cycle paints a sweeping ribbon across the field."},
-	{"id":"overdrive", "name":"Solar overdrive", "group":1, "cost":10000, "cores":6, "rank":80, "pre":"swarm", "icon":"nova", "desc":"New tool: 12 seconds of rapid fleet cycles. Costs 12 energy."},
-	{"id":"salvage", "name":"Charge reclamation", "group":2, "cost":100, "cores":1, "rank":1, "pre":"", "icon":"flag", "desc":"Correct flags pay 8 light at completion. A reason to mark the whole field."},
-	{"id":"chain", "name":"Chain reactor", "group":2, "cost":350, "cores":2, "rank":4, "pre":"", "icon":"cross", "desc":"Safe manual reveals build a persistent multiplier, up to 3 times light."},
-	{"id":"shield", "name":"Soft landing", "group":2, "cost":600, "cores":2, "rank":9, "pre":"", "icon":"shield", "desc":"The first mine hit per expedition keeps your chain and energy intact."},
-	{"id":"chord", "name":"Cascade circuit", "group":2, "cost":1100, "cores":3, "rank":16, "pre":"chain", "icon":"cross", "desc":"Chording safely triggers other satisfied clues in a continuous cascade."},
-	{"id":"bounty", "name":"Pocket refinery", "group":2, "cost":2100, "cores":3, "rank":26, "pre":"salvage", "icon":"prism", "desc":"Pockets produce 25 extra light. Every perfect clear awards an extra core."},
-	{"id":"capacitor", "name":"Induction loop", "group":2, "cost":3300, "cores":4, "rank":37, "pre":"battery", "icon":"battery", "desc":"Drone-mapped charges restore energy. Passive energy returns twice as fast."},
-	{"id":"relay", "name":"Relay network", "group":2, "cost":5100, "cores":5, "rank":55, "pre":"chord", "icon":"line", "desc":"Start expeditions with two extra safe openings. Drone reveals pay full light."},
-	{"id":"aurora", "name":"Aurora protocol", "group":2, "cost":8400, "cores":6, "rank":73, "pre":"relay", "icon":"nova", "desc":"Clearing a field refills all energy. Pockets trigger free safe crossbeams."}
+	{"id":"lens","name":"Survey lens","group":-1,"cost":24,"cores":0,"rank":0,"pre":"","icon":"lens","desc":"A survey lens lights up the eight neighbours of any clue.","branch":-1,"depth":0,"side":0},
+	{"id":"salvage","name":"Charge reclamation","group":2,"cost":100,"cores":1,"rank":1,"pre":"lens","icon":"flag","desc":"Correct flags pay 8 light at completion. A reason to mark the whole field.","branch":5,"depth":1,"side":-1},
+	{"id":"probe2","name":"Twin pulse","group":0,"cost":140,"cores":1,"rank":1,"pre":"lens","icon":"pulse","desc":"Your free probe opens two safe tiles instead of one.","branch":0,"depth":1,"side":-1},
+	{"id":"drone","name":"Scout drone","group":1,"cost":180,"cores":2,"rank":2,"pre":"lens","icon":"drone","desc":"A companion opens one logically safe tile every 3 seconds. Never guesses.","branch":1,"depth":1,"side":-1},
+	{"id":"chain","name":"Chain reactor","group":2,"cost":350,"cores":2,"rank":2,"pre":"lens","icon":"cross","desc":"Safe manual reveals build a persistent multiplier, up to 3 times light.","branch":3,"depth":1,"side":-1},
+	{"id":"focus","name":"Focused pulse","group":0,"cost":160,"cores":1,"rank":3,"pre":"probe2","icon":"lens","desc":"Aim Pulse at a tile. It finds safe ground closest to your cursor.","branch":0,"depth":1,"side":1},
+	{"id":"cross","name":"Crossbeam","group":0,"cost":260,"cores":2,"rank":5,"pre":"probe2","icon":"cross","desc":"New tool: safely sweep a cross through the selected tile. Costs 6 energy.","branch":0,"depth":2,"side":1},
+	{"id":"flagger","name":"Cartographer","group":1,"cost":450,"cores":2,"rank":5,"pre":"drone","icon":"flag","desc":"Your drone also marks mines proven by adjacent clues.","branch":1,"depth":1,"side":1},
+	{"id":"battery","name":"Seed capacitor","group":2,"cost":420,"cores":2,"rank":6,"pre":"lens","icon":"battery","desc":"Store 18 energy. Every uncovered pocket refills 4 energy.","branch":2,"depth":1,"side":-1},
+	{"id":"drill","name":"Diamond pick","group":2,"cost":420,"cores":1,"rank":8,"pre":"chain","icon":"line","desc":"Manual work breaks three layers of plating in a single hit.","branch":3,"depth":1,"side":1},
+	{"id":"shield","name":"Soft landing","group":2,"cost":600,"cores":2,"rank":9,"pre":"salvage","icon":"shield","desc":"The first mine hit per expedition keeps your chain and energy intact.","branch":5,"depth":1,"side":1},
+	{"id":"prism","name":"Prism echo","group":2,"cost":700,"cores":3,"rank":10,"pre":"lens","icon":"prism","desc":"Crystal pockets also open a safe neighbour. Probe opens three tiles.","branch":4,"depth":1,"side":-1},
+	{"id":"pair","name":"Wingmate","group":1,"cost":850,"cores":3,"rank":11,"pre":"drone","icon":"drone","desc":"A second drone joins. Both act each cycle, with independent deductions.","branch":1,"depth":2,"side":-1},
+	{"id":"reservoir","name":"Pulse reservoir","group":0,"cost":650,"cores":2,"rank":12,"pre":"focus","icon":"battery","desc":"Store two free pulses. Save one for the next uncertain corner.","branch":0,"depth":2,"side":-1},
+	{"id":"flywheel","name":"Flywheel","group":2,"cost":850,"cores":2,"rank":15,"pre":"battery","icon":"pulse","desc":"A successful chord fully recharges one free Pulse.","branch":2,"depth":1,"side":1},
+	{"id":"chord","name":"Cascade circuit","group":2,"cost":1100,"cores":3,"rank":16,"pre":"chain","icon":"cross","desc":"Chording safely triggers other satisfied clues in a continuous cascade.","branch":3,"depth":2,"side":1},
+	{"id":"harvester","name":"Charge painter","group":2,"cost":950,"cores":2,"rank":17,"pre":"salvage","icon":"flag","desc":"Beams mark every charge in their footprint, ready for chording.","branch":5,"depth":2,"side":-1},
+	{"id":"diagonal","name":"Eightfold beam","group":0,"cost":1100,"cores":2,"rank":18,"pre":"cross","icon":"cross","desc":"Crossbeam grows four diagonal arms.","branch":0,"depth":3,"side":-1},
+	{"id":"logic","name":"Pattern engine","group":1,"cost":1600,"cores":3,"rank":19,"pre":"flagger","icon":"prism","desc":"Drones compare overlapping clue groups to find subtler safe moves.","branch":1,"depth":3,"side":-1},
+	{"id":"fracture","name":"Fault lines","group":2,"cost":1300,"cores":2,"rank":21,"pre":"drill","icon":"cross","desc":"Breaking a plate cracks the neighbouring plates too.","branch":3,"depth":2,"side":-1},
+	{"id":"line","name":"Horizon beam","group":0,"cost":950,"cores":3,"rank":24,"pre":"cross","icon":"line","desc":"New tool: reveal every safe tile in the selected row. Costs 10 energy.","branch":0,"depth":4,"side":-1},
+	{"id":"compass","name":"Crystal compass","group":2,"cost":1500,"cores":2,"rank":25,"pre":"prism","icon":"prism","desc":"See buried crystal pockets before uncovering them.","branch":4,"depth":1,"side":1},
+	{"id":"bounty","name":"Pocket refinery","group":2,"cost":2100,"cores":3,"rank":26,"pre":"salvage","icon":"prism","desc":"Pockets produce 25 extra light. Every perfect clear awards an extra core.","branch":5,"depth":2,"side":1},
+	{"id":"kinetic","name":"Kinetic collector","group":2,"cost":1600,"cores":3,"rank":27,"pre":"flywheel","icon":"battery","desc":"Breaking plates by hand produces energy and recharges Pulse.","branch":2,"depth":2,"side":-1},
+	{"id":"excavator","name":"Excavator chassis","group":1,"cost":1900,"cores":3,"rank":28,"pre":"pair","icon":"drone","desc":"Drones break three layers of plating per visit.","branch":1,"depth":2,"side":1},
+	{"id":"perforator","name":"Bore laser","group":0,"cost":2400,"cores":3,"rank":30,"pre":"diagonal","icon":"line","desc":"Every beam hit breaks four layers of buried plating.","branch":0,"depth":3,"side":1},
+	{"id":"fleet","name":"Fieldwork fleet","group":1,"cost":2800,"cores":4,"rank":31,"pre":"excavator","icon":"fleet","desc":"Four drones work at once. Recovered pockets briefly accelerate the fleet.","branch":1,"depth":4,"side":-1},
+	{"id":"echochamber","name":"Hollow resonance","group":2,"cost":2400,"cores":3,"rank":33,"pre":"harvester","icon":"pulse","desc":"Opening a zero-clue cavern restores one free Pulse.","branch":5,"depth":3,"side":-1},
+	{"id":"relay","name":"Relay network","group":2,"cost":5100,"cores":5,"rank":36,"pre":"compass","icon":"line","desc":"Start expeditions with two extra safe openings. Drone reveals pay full light.","branch":4,"depth":2,"side":1},
+	{"id":"capacitor","name":"Induction loop","group":2,"cost":3300,"cores":4,"rank":37,"pre":"battery","icon":"battery","desc":"Drone-mapped charges restore energy. Passive energy returns twice as fast.","branch":2,"depth":2,"side":1},
+	{"id":"sentry","name":"Rescue flare","group":2,"cost":2700,"cores":3,"rank":39,"pre":"shield","icon":"shield","desc":"A protected strike sends a free safe probe into the field.","branch":3,"depth":4,"side":-1},
+	{"id":"cartogram","name":"Deep scanner","group":2,"cost":3000,"cores":3,"rank":40,"pre":"compass","icon":"lens","desc":"Unfocused pulses seek the largest new opening, instead of the nearest edge.","branch":4,"depth":2,"side":-1},
+	{"id":"vertical","name":"Meridian","group":0,"cost":3700,"cores":4,"rank":42,"pre":"line","icon":"cross","desc":"Horizon cuts a full column as well as a row.","branch":0,"depth":4,"side":1},
+	{"id":"nova","name":"Nova charge","group":0,"cost":3800,"cores":5,"rank":43,"pre":"line","icon":"nova","desc":"New tool: sweep a safe 5 by 5 area. Costs 16 energy; capacity becomes 24.","branch":0,"depth":5,"side":-1},
+	{"id":"synchrony","name":"Coordinated strike","group":1,"cost":4200,"cores":4,"rank":45,"pre":"logic","icon":"fleet","desc":"A successful manual chord calls an immediate fleet cycle.","branch":1,"depth":3,"side":1},
+	{"id":"seismic","name":"Seismic rhythm","group":2,"cost":4500,"cores":4,"rank":46,"pre":"fracture","icon":"nova","desc":"Every sixth manual excavation sends a safe crossbeam through that tile.","branch":3,"depth":3,"side":-1},
+	{"id":"oracle","name":"Oracle beacon","group":1,"cost":4400,"cores":5,"rank":47,"pre":"logic","icon":"lens","desc":"When logic stalls, the fleet spends 3 energy to probe safe ground.","branch":1,"depth":4,"side":1},
+	{"id":"magnet","name":"Pocket gravity","group":2,"cost":4000,"cores":4,"rank":49,"pre":"bounty","icon":"prism","desc":"Each pocket pulls open two more safe tiles nearby.","branch":5,"depth":3,"side":1},
+	{"id":"launchpad","name":"Launch rail","group":2,"cost":4300,"cores":4,"rank":51,"pre":"relay","icon":"drone","desc":"The fleet makes the first safe opening on each new stratum.","branch":4,"depth":3,"side":-1},
+	{"id":"supercap","name":"Storm capacitor","group":2,"cost":5700,"cores":4,"rank":57,"pre":"capacitor","icon":"battery","desc":"Store 40 energy: enough to combine Nova and Horizon.","branch":2,"depth":3,"side":-1},
+	{"id":"conductor","name":"Clue conductor","group":2,"cost":5800,"cores":4,"rank":59,"pre":"chord","icon":"prism","desc":"Click a clue to open neighbours proved safe, even without placing flags.","branch":3,"depth":3,"side":1},
+	{"id":"resonance","name":"Resonance","group":2,"cost":6200,"cores":5,"rank":61,"pre":"supercap","icon":"pulse","desc":"Every tool reveal earns energy back. Smart sweeps skip already open ground.","branch":2,"depth":3,"side":1},
+	{"id":"crucible","name":"Shard furnace","group":2,"cost":6000,"cores":4,"rank":63,"pre":"echochamber","icon":"battery","desc":"Every shattered plate, including drone work, fuels your tools.","branch":5,"depth":4,"side":-1},
+	{"id":"swarm","name":"Daybreak swarm","group":1,"cost":7000,"cores":6,"rank":65,"pre":"fleet","icon":"fleet","desc":"Eight drones. Each cycle paints a sweeping ribbon across the field.","branch":1,"depth":5,"side":-1},
+	{"id":"autodescent","name":"Autonomous descent","group":2,"cost":7500,"cores":5,"rank":71,"pre":"launchpad","icon":"fleet","desc":"The fleet descends to the next stratum by itself. New sites still await your signal.","branch":4,"depth":3,"side":1},
+	{"id":"aurora","name":"Aurora protocol","group":2,"cost":8400,"cores":6,"rank":73,"pre":"autodescent","icon":"nova","desc":"Clearing a field refills all energy. Pockets trigger free safe crossbeams.","branch":4,"depth":4,"side":-1},
+	{"id":"aftershock","name":"Event horizon","group":0,"cost":8500,"cores":6,"rank":76,"pre":"nova","icon":"nova","desc":"Nova grows to 7 × 7 and cracks every plate inside.","branch":0,"depth":5,"side":1},
+	{"id":"recycler","name":"Closed circuit","group":2,"cost":8000,"cores":5,"rank":78,"pre":"resonance","icon":"battery","desc":"Beams refund energy for open tiles in their footprint. Precision becomes optional.","branch":2,"depth":4,"side":-1},
+	{"id":"overdrive","name":"Solar overdrive","group":1,"cost":10000,"cores":6,"rank":80,"pre":"swarm","icon":"nova","desc":"New tool: 12 seconds of rapid fleet cycles. Costs 12 energy.","branch":1,"depth":5,"side":1},
+	{"id":"legacy","name":"Unbroken current","group":2,"cost":10000,"cores":6,"rank":86,"pre":"aurora","icon":"nova","desc":"Your chain carries between strata and sites. All excavation breaks six plate layers.","branch":5,"depth":4,"side":1}
 ]
 
 const TRANSMISSIONS = [
@@ -55,21 +81,21 @@ const TRANSMISSIONS = [
 static func region_for(index: int) -> int:
 	return mini(index / REGION_LENGTH, 5)
 
-static func contract(index: int, trial: int = -1) -> Dictionary:
+static func contract(index: int, trial: int = -1, stratum: int = 0) -> Dictionary:
 	var region := region_for(index)
 	var step := index % REGION_LENGTH
-	var width: int = [9,12,14,15,17,18][region] + step / 8
-	var height: int = [8,9,10,11,12,12][region] + (1 if step >= 8 and region < 4 else 0)
-	var density := 0.16 + region * 0.017 + (step % 4) * 0.008
+	var width: int = [9,13,16,19,22,24][region] + step / 8
+	var height: int = [8,10,12,13,14,16][region] + (1 if step >= 8 and region < 4 else 0)
+	var density := 0.16 + region * 0.024 + (step % 4) * 0.008 + minf(stratum * 0.002,0.015)
 	if index < 3:
-		width = 8
-		height = 7
+		width = 6 + index
+		height = 5 + index
 		density = 0.13 + index * 0.015
 	if trial >= 0:
 		width = 11 + trial / 3
 		height = 9 + trial / 4
 		density = 0.19 + (trial % 3) * 0.015
-	return {"width":width,"height":height,"mines":int(width * height * density),"seed":71093 + index * 7919 + maxi(trial, 0) * 11003,"region":region,"step":step,"trial":trial,"finale":step == 15}
+	return {"width":width,"height":height,"mines":int(width * height * density),"seed":71093 + index * 7919 + maxi(trial, 0) * 11003 + stratum * 104729,"region":region,"step":step,"trial":trial,"finale":step == 15,"crust":0 if index<6 or trial>=0 else mini(6,1+region+stratum/4)}
 
 static func upgrade(id: String) -> Dictionary:
 	for item in UPGRADES:
@@ -80,3 +106,19 @@ static func upgrade(id: String) -> Dictionary:
 static func title_for(index: int) -> String:
 	var nouns = ["First footsteps", "A quiet signal", "Under the surface", "The long way home", "Fragments of light", "A promising frequency", "Small discoveries", "The shape of silence", "Another little sunrise", "A line in the dust", "Where we left off", "Signals from the deep", "Almost a memory", "An open horizon", "The last approach", "Restore the relay"]
 	return nouns[index % REGION_LENGTH]
+
+const BRANCH_NAMES = ["BEAMS", "FLEET", "ENERGY", "CRAFT", "DISCOVERY", "ALCHEMY"]
+const BRANCH_COLORS = ["7bdde8","efbf77","e9dd97","ed9b87","b6a4e5","8bd6a6"]
+
+static func strata_for(index: int, trial: int = -1) -> int:
+	if trial >= 0 or index < 4:
+		return 1
+	return [2,3,5,7,9,12][region_for(index)] + (1 if index % REGION_LENGTH >= 12 else 0)
+
+static func tree_position(item: Dictionary) -> Vector2:
+	if item.id == "lens":
+		return Vector2.ZERO
+	var angle: float = item.branch * TAU / 6 - PI/2
+	var direction := Vector2.from_angle(angle)
+	var tangent := direction.orthogonal()
+	return direction * (110+int(item.depth)*95) + tangent * int(item.side) * (42+int(item.depth)*12)

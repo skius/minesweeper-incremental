@@ -14,13 +14,18 @@ var mines: PackedByteArray = []
 var clues: PackedByteArray = []
 var cells: PackedByteArray = []
 var pockets: PackedByteArray = []
+var plates: PackedByteArray = []
+var crust: int = 0
 
-func setup(w: int, h: int, count: int, seed_value: int) -> void:
+func setup(w: int, h: int, count: int, seed_value: int, crust_value: int = 0) -> void:
 	width = w
 	height = h
 	mine_count = clampi(count, 1, w * h - 10)
 	board_seed = seed_value
 	generated = false
+	crust = crust_value
+	plates.resize(w * h)
+	plates.fill(0)
 	mines.resize(w * h)
 	clues.resize(w * h)
 	cells.resize(w * h)
@@ -66,6 +71,10 @@ func generate(first: int) -> void:
 		clues[i] = adjacent
 		if mines[i] == 0 and not excluded.has(i) and rng.randf() < 0.07:
 			pockets[i] = 1
+	# Plating conceals no clue information; it is an excavation layer.
+	for i in range(cells.size()):
+		if not excluded.has(i) and crust > 0 and rng.randf() < 0.48:
+			plates[i] = crust
 	generated = true
 
 func reveal(i: int) -> Array[int]:
@@ -80,7 +89,7 @@ func reveal(i: int) -> Array[int]:
 	var pending: Array[int] = [i]
 	while not pending.is_empty():
 		var next: int = pending.pop_back()
-		if cells[next] != HIDDEN or mines[next] == 1:
+		if cells[next] != HIDDEN or mines[next] == 1 or plates[next] > 0:
 			continue
 		cells[next] = OPEN
 		changed.append(next)
@@ -106,7 +115,9 @@ func chord_targets(i: int) -> Array[int]:
 			flags += 1
 		elif cells[n] == HIDDEN:
 			out.append(n)
-	return out if flags == clues[i] else []
+	if flags != clues[i]:
+		out.clear()
+	return out
 
 func safe_remaining() -> int:
 	var total := 0
@@ -204,7 +215,7 @@ func safe_probe() -> int:
 	return fallback
 
 func to_dict() -> Dictionary:
-	return {"width":width,"height":height,"mine_count":mine_count,"seed":board_seed,"generated":generated,"mines":Array(mines),"clues":Array(clues),"cells":Array(cells),"pockets":Array(pockets)}
+	return {"width":width,"height":height,"mine_count":mine_count,"seed":board_seed,"generated":generated,"mines":Array(mines),"clues":Array(clues),"cells":Array(cells),"pockets":Array(pockets),"plates":Array(plates),"crust":crust}
 
 static func from_dict(data: Dictionary) -> MineBoard:
 	if not validate(data):
@@ -216,6 +227,9 @@ static func from_dict(data: Dictionary) -> MineBoard:
 	b.clues = PackedByteArray(data.clues)
 	b.cells = PackedByteArray(data.cells)
 	b.pockets = PackedByteArray(data.pockets)
+	b.crust = int(data.get("crust",0))
+	if data.has("plates"):
+		b.plates = PackedByteArray(data.plates)
 	return b
 
 static func validate(data: Dictionary) -> bool:
@@ -232,6 +246,12 @@ static func validate(data: Dictionary) -> bool:
 		var upper := 8 if key == "clues" else (3 if key == "cells" else 1)
 		for value in data[key]:
 			if not (value is int or value is float) or value < 0 or value > upper or value != int(value):
+				return false
+	if data.has("plates"):
+		if not data.plates is Array or data.plates.size() != w*h:
+			return false
+		for value in data.plates:
+			if not (value is int or value is float) or value < 0 or value > 12 or value != int(value):
 				return false
 	if data.generated:
 		var counted_mines := 0

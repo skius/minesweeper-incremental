@@ -22,3 +22,8 @@ All imagery and audio must come from procedural code; do not use image or audio 
 Standalone Windows and Compatibility Web exports are generated under ignored `builds/`. The Windows release has its own isolated native render/input/save smoke test. Web runtime is unverified. The clean Windows archive contains only the executable, PCK and player README. Full evidence and limits are recorded in `docs/QA.md`.
 
 Delivery is on `codex/afterlight`; gameplay has not been merged into main, respecting the inherited player-review workflow. No store work was performed. All artwork and sound are procedural. Future changes should begin with the player trying this integrated build, rather than creating alternative prototypes.
+
+## Revision 1.1 in progress
+Player feedback supersedes the original visual/content sign-off: reduce screen text and choices, introduce concepts gradually, build a radial branching tree with 50 meaningful discoveries, target roughly three hours using faster player models, and establish a modern Windows 95/XP-inspired identity. No scanline readability penalty; geometry and synthesized audio only.
+
+Core implementation now adds strata, visible excavation plating, 26 additional discoveries and version-1 save migration. New pacing policies make one-second decisions and use aimed beams and chording. UI is being replaced with a quiet field window and a separate upgrade map; full native/visual validation and new release packaging remain outstanding. Previous 1.0 pacing/visual claims do not validate this revision.

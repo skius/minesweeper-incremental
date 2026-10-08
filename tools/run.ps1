@@ -19,7 +19,7 @@ switch ($Mode) {
 }
 if ($Mode -in @('import','test','balance')) {
     $engineProcess = Start-Process -FilePath $enginePath -ArgumentList $engineArgs -WindowStyle Hidden -PassThru
-    if (-not $engineProcess.WaitForExit(180000)) { $engineProcess.Kill(); throw ('Godot timed out; stopped owned PID '+$engineProcess.Id) }
+    if (-not $engineProcess.WaitForExit($(if ($Mode -eq 'balance') {900000} else {180000}))) { $engineProcess.Kill(); throw ('Godot timed out; stopped owned PID '+$engineProcess.Id) }
     if ($engineProcess.ExitCode -ne 0) { Get-Content $runLog -Tail 30; exit 1 }
 }
 if (Test-Path $runLog) {
