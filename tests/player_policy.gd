@@ -10,18 +10,21 @@ static func act(s: GameSession) -> bool:
 	var best_cell := -1
 	var best_gain := 3.0
 	for id in ["cross","line","nova"]:
-		if not s.has(id) or s.energy < s.tool_cost(id):
+		if not s.tool_available(id) or s.energy < s.minimum_tool_cost(id):
 			continue
 		# Sample the entire field on a coarse lattice, including its edges.
 		for y in range(0,b.height,2):
 			for x in range(0,b.width,2):
 				var target := y*b.width+x
+				var cost := s.effective_tool_cost(id,target)
+				if s.energy<cost:
+					continue
 				var gain := 0.0
 				for n in s.tool_cells(id,target):
 					if b.cells[n] == MineBoard.HIDDEN:
 						gain += 1.0 if b.plates[n] <= s.excavation_power("tool") else 0.45
 				# Prefer efficient shapes, rather than spending all energy on a tiny patch.
-				gain *= 6.0/s.tool_cost(id)
+				gain *= 6.0/cost
 				if gain > best_gain:
 					best_gain = gain
 					best_tool = id
@@ -39,7 +42,7 @@ static func act(s: GameSession) -> bool:
 		s.chord(best_chord)
 		return true
 	var moves := b.deductions(true)
-	if s.has("overdrive") and s.overclock <= 0 and s.energy >= s.tool_cost("overdrive") and moves.safe.size() >= 8:
+	if s.tool_available("overdrive") and s.overdrive_seconds <= 0 and s.energy >= s.tool_cost("overdrive") and moves.safe.size() >= 8:
 		return s.use_tool("overdrive")
 	if s.has("conductor") and not moves.safe.is_empty():
 		for i in range(b.cells.size()):

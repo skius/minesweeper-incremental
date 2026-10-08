@@ -7,6 +7,8 @@ First refinement checkpoint: native screenshots now show pictogram input cues, f
 
 Save hardening checkpoint: the critical reviewer supplied an independent malformed-save corpus. The loader now checks types and finite integral values before conversion, rejects impossible cell/reward/trial states, and preserves compatibility with older depth and upgrade records. All 73,081 rule/save assertions pass, including fallback and byte preservation of the invalid primary and valid backup. Nested completion also stops Oracle work once the board is already clear. Distinct upgrade symbols are being visually reviewed separately; delivery remains in progress.
 
+Upgrade impact audit: Clue conductor and automatic cascades now validate safe targets despite wrong flags. Prism/gravity openings penetrate plating, Deep scanner measures actual flood size, Aurora recharges at every stratum, and paid Overdrive runs at 0.3s cycles with its own saved timer and enough capacity on a fleet-only build. Restricted trial tools use a shared availability predicate; prerequisite milestone ordering is consistent. All 73,141 rule/save assertions pass. Pacing must be measured again after these effects and the more capable recycler-aware player policy.
+
 ## Current build
 The integrated revision is complete on `codex/afterlight`. Main remains unchanged pending player review. Standalone Windows and Compatibility Web exports are under ignored `builds/`; the Windows archive is `builds/Afterlight-1.1.0-Windows.zip`. No store integration was performed.
 

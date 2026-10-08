@@ -217,6 +217,25 @@ func safe_probe() -> int:
 func to_dict() -> Dictionary:
 	return {"width":width,"height":height,"mine_count":mine_count,"seed":board_seed,"generated":generated,"mines":Array(mines),"clues":Array(clues),"cells":Array(cells),"pockets":Array(pockets),"plates":Array(plates),"crust":crust}
 
+# Pulse may penetrate its target plate, but the flood still respects all other
+# plating and flags. Deep scanner compares the actual resulting openings.
+func opening_size(target: int) -> int:
+	if target<0 or target>=cells.size() or mines[target]!=0 or cells[target]==OPEN:
+		return 0
+	var visited: Dictionary={}
+	var pending: Array[int]=[target]
+	while not pending.is_empty():
+		var i: int=pending.pop_back()
+		if visited.has(i) or mines[i]!=0 or cells[i]==OPEN:
+			continue
+		if i!=target and (cells[i]!=HIDDEN or plates[i]>0):
+			continue
+		visited[i]=true
+		if clues[i]==0:
+			for n in neighbours(i):
+				pending.append(n)
+	return visited.size()
+
 static func from_dict(data: Dictionary) -> MineBoard:
 	if not validate(data):
 		return null

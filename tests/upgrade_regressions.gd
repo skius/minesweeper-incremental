@@ -110,3 +110,72 @@ static func run(check: Callable) -> void:
 	descent.drones_enabled=false
 	descent.tick(10)
 	check.call(descent.stratum==0,"pausing fleet also pauses autonomous descent")
+	var fleet_build := fixture()
+	fleet_build.upgrades.assign(["drone","pair","fleet","swarm","overdrive"])
+	check.call(fleet_build.capacity()>=fleet_build.tool_cost("overdrive"),"fleet branch can power its own overdrive without buying another branch")
+	fleet_build.trial=0
+	check.call(not fleet_build.tool_available("overdrive") and fleet_build.tool_available("probe"),"trial availability is shared by toolbar and rules")
+	# The late conductor validates clues, instead of inheriting wrong flag risks.
+	var conductor := fixture()
+	conductor.board.cells.fill(MineBoard.OPEN)
+	conductor.board.cells[5]=MineBoard.HIDDEN
+	conductor.board.cells[6]=MineBoard.FLAG
+	conductor.board.cells[10]=MineBoard.HIDDEN
+	conductor.upgrades.assign(["conductor"])
+	conductor.chord(1)
+	check.call(conductor.strikes==0 and conductor.board.cells[6]==MineBoard.OPEN,"conductor corrects a false flag and never follows it into a mine")
+	var cascade := fixture()
+	cascade.board.mine_count=2
+	cascade.board.mines[14]=1
+	cascade.board.clues.fill(0)
+	for i in range(16):
+		for n in cascade.board.neighbours(i):
+			cascade.board.clues[i]+=cascade.board.mines[n]
+	cascade.board.cells.fill(MineBoard.OPEN)
+	cascade.board.cells[5]=MineBoard.FLAG
+	cascade.board.cells[13]=MineBoard.FLAG
+	for i in [6,9,14]:
+		cascade.board.cells[i]=MineBoard.HIDDEN
+	cascade.upgrades.assign(["chord"])
+	cascade.chord(1)
+	check.call(cascade.strikes==0 and cascade.board.cells[14]==MineBoard.HIDDEN,"cascade cannot spread an unrelated false flag into a strike")
+	var pocket := fixture()
+	pocket.board.pockets[0]=1
+	pocket.board.plates.fill(6)
+	pocket.board.plates[0]=0
+	pocket.upgrades.assign(["prism","magnet"])
+	pocket.reveal(0)
+	check.call(pocket.board.open_count()==4,"pocket echoes and gravity really open three extra safe tiles through deep plates")
+	var aurora := fixture(4)
+	aurora.board.cells.fill(MineBoard.OPEN)
+	aurora.board.cells[5]=MineBoard.HIDDEN
+	aurora.board.cells[6]=MineBoard.HIDDEN
+	aurora.upgrades.assign(["aurora","supercap"])
+	aurora.energy=0
+	aurora.reveal(6)
+	check.call(aurora.layer_ready and aurora.energy==40,"aurora refills energy at intermediate strata too")
+	# A paid overdrive must outperform a free pocket boost and cannot be wasted
+	# by activating its button again while it is already running.
+	var boost := fixture()
+	boost.upgrades.assign(["drone","overdrive"])
+	boost.energy=24
+	boost.overclock=10
+	check.call(boost.use_tool("overdrive") and boost.overdrive_seconds==12,"solar overdrive has its own stronger mode")
+	var energy_after: float=boost.energy
+	check.call(not boost.use_tool("overdrive") and boost.energy==energy_after,"active overdrive cannot consume a second activation")
+	boost.tick(0.31)
+	check.call(boost.drone_clock<0.31,"overdrive cycles before the free pocket cadence")
+	restored=GameSession.from_dict(boost.to_dict())
+	check.call(restored!=null and is_equal_approx(restored.overdrive_seconds,boost.overdrive_seconds),"active overdrive timer survives reload")
+	# Predicting actual flood size includes plate and flag barriers.
+	var scanner := MineBoard.new()
+	scanner.setup(7,7,8,765)
+	scanner.generate(24)
+	scanner.plates[23]=3
+	scanner.cells[25]=MineBoard.FLAG
+	var expected := scanner.opening_size(24)
+	var opened := scanner.reveal(24).size()
+	check.call(expected==opened and scanner.cells[23]==MineBoard.HIDDEN and scanner.cells[25]==MineBoard.FLAG,"deep scanner measures the actual constrained flood")
+	for item in Content.UPGRADES:
+		if item.pre!="":
+			check.call(item.rank>=Content.upgrade(item.pre).rank,"node milestone follows its prerequisite: "+item.id)

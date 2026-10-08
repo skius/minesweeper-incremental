@@ -27,6 +27,7 @@ var energy: float = 10.0
 var probe_charge: float = 1.0
 var drone_clock: float = 0.0
 var overclock: float = 0.0
+var overdrive_seconds: float = 0.0
 var chain: int = 0
 var strikes: int = 0
 var manual_actions: int = 0
@@ -51,7 +52,7 @@ func region() -> int:
 	return trial/2 if trial>=0 else Content.region_for(index)
 
 func capacity() -> float:
-	return 40.0 if has("supercap") else (24.0 if has("nova") else (18.0 if has("battery") else 10.0))
+	return 40.0 if has("supercap") else (24.0 if has("nova") or has("overdrive") else (18.0 if has("battery") else 10.0))
 
 func drone_count() -> int:
 	if not has("drone"):
@@ -81,6 +82,7 @@ func start_board() -> void:
 	probe_charge = 1
 	drone_clock = 0
 	overclock = 0
+	overdrive_seconds = 0
 	if not has("legacy"):
 		chain = 0
 	strikes = 0
@@ -231,11 +233,8 @@ func _reveal(i: int, source: String = "manual") -> void:
 	events.append({"type":"reveal","cells":changed,"amount":earned,"source":source,"chain":chain})
 	for pocket in pockets:
 		if has("magnet") and source != "echo":
-			var pulled := 0
-			for n in cross_cells(pocket):
-				if board.mines[n] == 0 and board.cells[n] == MineBoard.HIDDEN and pulled < 2:
-					reveal(n,"echo")
-					pulled += 1
+			for _extra in range(2):
+				probe_one("echo",pocket)
 		if region() == 4:
 			for n in range(board.cells.size()):
 				if board.mines[n] == 1 and board.cells[n] == MineBoard.HIDDEN:
@@ -243,10 +242,7 @@ func _reveal(i: int, source: String = "manual") -> void:
 					events.append({"type":"flag","cell":n,"auto":true})
 					break
 		if has("prism") and source != "echo":
-			for n in board.neighbours(pocket):
-				if board.mines[n] == 0 and board.cells[n] == MineBoard.HIDDEN:
-					reveal(n, "echo")
-					break
+			probe_one("echo",pocket)
 		if has("aurora") and source != "echo":
 			for n in cross_cells(pocket):
 				if board.mines[n] == 0:
@@ -275,10 +271,13 @@ func _chord(i: int) -> void:
 		return
 	var targets := board.chord_targets(i)
 	if has("conductor") and i >= 0 and i < board.cells.size() and board.cells[i] == MineBoard.OPEN:
+		targets.clear()
 		var proved: Array = board.deductions(true).safe
 		for n in board.neighbours(i):
-			if proved.has(n) and not targets.has(n):
+			if proved.has(n):
 				targets.append(n)
+				if board.cells[n]==MineBoard.FLAG:
+					board.cells[n]=MineBoard.HIDDEN
 	if targets.is_empty():
 		events.append({"type":"tip","text":"Match this clue with neighbouring flags before chording."})
 		return
@@ -293,12 +292,13 @@ func _chord(i: int) -> void:
 			cascade_guard = true
 			drone_cycle()
 			cascade_guard = false
-	if has("chord") and not finished:
+	if has("chord") and strikes==strikes_before and not finished:
 		for _pass in range(5):
 			var any := false
+			var safe: Array=board.deductions(true).safe
 			for cell in range(board.cells.size()):
 				for n in board.chord_targets(cell):
-					if board.cells[n] == MineBoard.HIDDEN:
+					if board.cells[n] == MineBoard.HIDDEN and safe.has(n):
 						any = true
 						reveal(n, "cascade")
 			if not any or finished:
@@ -325,6 +325,9 @@ func tool_cost(id: String) -> float:
 
 func minimum_tool_cost(id: String) -> float:
 	return 2.0 if has("recycler") and id in ["cross","line","nova"] else tool_cost(id)
+
+func tool_available(id: String) -> bool:
+	return (id=="probe" or has(id)) and not (trial>=0 and trial%2==0 and id!="probe")
 
 func effective_tool_cost(id: String, i: int) -> float:
 	var cost := tool_cost(id)
@@ -367,10 +370,7 @@ func use_tool(id: String, i: int = -1) -> bool:
 	return used
 
 func _use_tool(id: String, i: int = -1) -> bool:
-	if finished or layer_ready or (id != "probe" and not has(id)):
-		return false
-	if trial >= 0 and trial % 2 == 0 and id != "probe":
-		events.append({"type":"tip","text":"This mastery trial is survey tools only: use the probe and your clues."})
+	if finished or layer_ready or not tool_available(id):
 		return false
 	if id == "probe":
 		if probe_charge < 1:
@@ -385,8 +385,10 @@ func _use_tool(id: String, i: int = -1) -> bool:
 		events.append({"type":"tip","text":"More energy needed. Reveal safe tiles or let the capacitor recharge."})
 		return false
 	if id == "overdrive":
+		if overdrive_seconds>0:
+			return false
 		energy -= tool_cost(id)
-		overclock = 12
+		overdrive_seconds = 12
 		events.append({"type":"tool","id":id,"cell":i})
 		return true
 	if i < 0 or i >= board.cells.size():
@@ -426,9 +428,7 @@ func probe_one(source: String, target: int = -1) -> void:
 			if target >= 0:
 				score = -Vector2(i%board.width,i/board.width).distance_squared_to(Vector2(target%board.width,target/board.width))
 			else:
-				for n in board.neighbours(i):
-					score += 1 if board.cells[n] == MineBoard.HIDDEN else 0
-				score += 12 if board.clues[i] == 0 else 0
+				score = board.opening_size(i)
 			if score > best:
 				best = score
 				cell = i
@@ -458,10 +458,11 @@ func tick(delta: float) -> void:
 	energy = minf(capacity(), energy + delta * (0.6 if has("capacitor") else 0.3))
 	probe_charge = minf(probe_capacity(), probe_charge + delta / 9.0)
 	overclock = maxf(0, overclock - delta)
+	overdrive_seconds = maxf(0,overdrive_seconds-delta)
 	if drone_count() == 0 or not drones_enabled or (trial >= 0 and trial % 2 == 0):
 		return
 	drone_clock += delta
-	var interval := 0.85 if overclock > 0 else 3.0
+	var interval := 0.3 if overdrive_seconds>0 else (0.85 if overclock > 0 else 3.0)
 	if drone_clock >= interval:
 		drone_clock = fmod(drone_clock, interval)
 		drone_cycle()
@@ -503,6 +504,8 @@ func check_completion() -> void:
 	total_flags += correct_flags
 	var flag_reward := correct_flags*8 if has("salvage") else 0
 	add_light(flag_reward)
+	if has("aurora"):
+		energy=capacity()
 	if flag_reward>0:
 		events.append({"type":"salvage","amount":flag_reward,"flags":correct_flags})
 	if stratum+1 < Content.strata_for(index,trial):
@@ -531,13 +534,11 @@ func check_completion() -> void:
 		medals[str(index)] = maxi(rating, int(medals.get(str(index), 0)))
 	cores += reward_cores
 	add_light(bonus)
-	if has("aurora"):
-		energy = capacity()
 	last_reward = {"bonus":bonus+flag_reward,"cores":reward_cores,"rating":rating,"flags":correct_flags,"earned":board_earned,"seconds":board_seconds,"region_end":index % Content.REGION_LENGTH == 15 and trial < 0}
 	events.append({"type":"complete","reward":last_reward.duplicate()})
 
 func to_dict() -> Dictionary:
-	return {"version":2,"stratum":stratum,"layer_ready":layer_ready,"excavations":excavations,"manual_excavations":manual_excavations,"index":index,"trial":trial,"credits":credits,"cores":cores,"upgrades":upgrades,"medals":medals,"trial_medals":trial_medals,"total_light":total_light,"total_reveals":total_reveals,"total_flags":total_flags,"total_drone":total_drone,"total_strikes":total_strikes,"play_seconds":play_seconds,"board_seconds":board_seconds,"energy":energy,"probe_charge":probe_charge,"drone_clock":drone_clock,"overclock":overclock,"chain":chain,"strikes":strikes,"manual_actions":manual_actions,"board_earned":board_earned,"finished":finished,"completed_campaign":completed_campaign,"drones_enabled":drones_enabled,"last_reward":last_reward,"paid_flags":paid_flags,"seen_intro":seen_intro,"livery":livery,"board":board.to_dict()}
+	return {"version":2,"stratum":stratum,"layer_ready":layer_ready,"excavations":excavations,"manual_excavations":manual_excavations,"index":index,"trial":trial,"credits":credits,"cores":cores,"upgrades":upgrades,"medals":medals,"trial_medals":trial_medals,"total_light":total_light,"total_reveals":total_reveals,"total_flags":total_flags,"total_drone":total_drone,"total_strikes":total_strikes,"play_seconds":play_seconds,"board_seconds":board_seconds,"energy":energy,"probe_charge":probe_charge,"drone_clock":drone_clock,"overclock":overclock,"overdrive_seconds":overdrive_seconds,"descent_clock":descent_clock,"chain":chain,"strikes":strikes,"manual_actions":manual_actions,"board_earned":board_earned,"finished":finished,"completed_campaign":completed_campaign,"drones_enabled":drones_enabled,"last_reward":last_reward,"paid_flags":paid_flags,"seen_intro":seen_intro,"livery":livery,"board":board.to_dict()}
 
 static func from_dict(data: Dictionary) -> GameSession:
 	if not MineBoard.integer_value(data.get("version"),1,2) or not data.get("board") is Dictionary:
@@ -554,7 +555,7 @@ static func from_dict(data: Dictionary) -> GameSession:
 	for key in ["play_seconds","energy","probe_charge"]:
 		if not MineBoard.number_value(data.get(key)):
 			return null
-	for key in ["board_seconds","drone_clock","overclock"]:
+	for key in ["board_seconds","drone_clock","overclock","overdrive_seconds","descent_clock"]:
 		if not MineBoard.number_value(data.get(key,0)):
 			return null
 	for key in ["finished","completed_campaign","drones_enabled","seen_intro","layer_ready"]:
@@ -571,7 +572,7 @@ static func from_dict(data: Dictionary) -> GameSession:
 	if data.get("finished",false) and not valid_reward(data.get("last_reward",{})):
 		return null
 	var result := GameSession.new()
-	for key in ["stratum","layer_ready","excavations","manual_excavations","index","trial","credits","cores","medals","trial_medals","total_light","total_reveals","total_flags","total_drone","total_strikes","play_seconds","board_seconds","energy","probe_charge","drone_clock","overclock","chain","strikes","manual_actions","board_earned","finished","completed_campaign","drones_enabled","last_reward","seen_intro","livery"]:
+	for key in ["stratum","layer_ready","excavations","manual_excavations","index","trial","credits","cores","medals","trial_medals","total_light","total_reveals","total_flags","total_drone","total_strikes","play_seconds","board_seconds","energy","probe_charge","drone_clock","overclock","overdrive_seconds","descent_clock","chain","strikes","manual_actions","board_earned","finished","completed_campaign","drones_enabled","last_reward","seen_intro","livery"]:
 		if data.has(key):
 			result.set(key, data[key])
 	for id in data.upgrades:
