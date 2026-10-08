@@ -12,7 +12,7 @@ An abandoned planetary survey network wakes up one patch of land at a time. The 
 - Unlocks change verbs: probes, lenses, safe crosses, row sweeps, auto-flags, chain chording, logical drones, drone fleets, oracle resolution and overdrive.
 - Credits fund equipment. Research cores from expedition completions gate major capabilities. The economy must support several build orders without mandatory grinding.
 - Perfect play earns mastery stars. Stars unlock cosmetic fleet liveries rather than gating the campaign.
-- Target campaign duration: approximately two hours, varying with puzzle skill and automation choices. Measure actions and simulated pacing; do not claim human duration was verified without human sessions.
+- Target content duration: approximately two hours including mastery trials, varying with puzzle skill and automation choices. Measure actions and simulated pacing; do not claim human duration was verified without human sessions.
 
 ## Presentation
 Readable clues take precedence over effects. Reveals have a staggered lift, mint edge glints, musical intervals and travelling resource motes. Flags spring into place. Abilities trace geometric paths. Completion produces a board-wide light wave and a brief celebratory chord. Upgrades visibly add or change a tool or drone.

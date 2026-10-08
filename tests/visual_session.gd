@@ -41,6 +41,8 @@ func key(code: Key) -> void:
 
 func shot(name_value: String) -> void:
 	await frames(30)
+	check_layout(app.ui,name_value)
+	check_layout(app.modal,name_value)
 	await RenderingServer.frame_post_draw
 	var image := get_viewport().get_texture().get_image()
 	var path := "res://test_runs/shots/"+name_value+".png"
@@ -55,12 +57,20 @@ func shot(name_value: String) -> void:
 		file.store_string("\n".join(dump))
 		file.close()
 
+func check_layout(node: Node, shot_name: String) -> void:
+	if node is Label and node.has_meta("layout_height") and node.autowrap_mode != TextServer.AUTOWRAP_OFF:
+		check(node.size.y <= float(node.get_meta("layout_height"))+2,"text fits in "+shot_name+": "+node.text.left(35))
+	for child in node.get_children():
+		check_layout(child,shot_name)
+
 func run(root_app: Control) -> void:
 	app = root_app
 	DirAccess.make_dir_recursive_absolute("res://test_runs/shots")
 	# A fresh in-memory profile avoids altering or depending on a previous run.
 	app.session = null
 	app.show_menu()
+	check(absf(app.audio.music_player.stream.get_length()-32.0)<0.01,"procedural music duration survives compression")
+	check(app.audio.music_player.stream.loop_end == 705600,"compressed music loops at the full sample length")
 	await shot("01_menu")
 	await click(Vector2(260,500))
 	check(app.screen == "play","menu button begins expedition")
@@ -91,6 +101,22 @@ func run(root_app: Control) -> void:
 	app.close_modal()
 	app.show_guide()
 	await shot("06_guide")
+	app.show_guide(1)
+	await shot("13_guide_tools")
+	app.show_guide(2)
+	await shot("14_guide_fleet")
+	app.show_credits()
+	await shot("15_credits")
+	app.show_licenses()
+	await shot("16_licences")
+	app.show_settings()
+	# Settings are changed through native GUI input and must persist.
+	await click(Vector2(712,526))
+	check(app.settings.contrast,"high contrast setting toggles")
+	check(app.store.load_settings().contrast,"settings persist immediately")
+	app.settings.contrast = false
+	app.apply_settings()
+	app.store.write_settings(app.settings)
 	app.close_modal()
 	# Focus must not trap board navigation after a workshop purchase.
 	await click(Vector2(1210,398))
@@ -133,6 +159,12 @@ func run(root_app: Control) -> void:
 	app.shop_group = 1
 	app.rebuild_shop()
 	await shot("08_midgame")
+	DisplayServer.window_set_size(Vector2i(960,600))
+	await shot("17_small_window")
+	DisplayServer.window_set_size(Vector2i(1920,1080))
+	await shot("18_widescreen")
+	DisplayServer.window_set_size(Vector2i(1440,900))
+	await frames(10)
 	await click(Vector2(555,821))
 	check(app.selected_tool == "cross","crossbeam selection")
 	await click(app.board_view.position+app.board_view.cell_position(18))
@@ -140,9 +172,34 @@ func run(root_app: Control) -> void:
 	app.show_records()
 	await shot("10_atlas")
 	app.close_modal()
+	app.show_trial(0)
+	await shot("19_trial_briefing")
+	app.close_modal()
+	app.show_region(2)
+	await shot("20_region")
+	app.close_modal()
+	app.capture_report()
+	await frames(10)
+	await shot("21_report")
+	await click(Vector2(710,646))
+	check(app.modal_kind == "","field report saved through GUI")
+	check(DirAccess.dir_exists_absolute(app.store.path("reports")),"local report directory exists")
+	app.close_modal()
 	app.save_game()
 	var restored: GameSession = app.store.load_session()
 	check(restored != null and restored.board.cells == app.session.board.cells,"native mid-board save")
+	# A failed save must not silently close the game and discard current work.
+	var original_directory: String = app.store.directory
+	var blocker_path: String = app.store.path("blocked_directory")
+	var blocker := FileAccess.open(blocker_path,FileAccess.WRITE)
+	blocker.store_string("This is a test file, not a directory.")
+	blocker.close()
+	app.store.directory = blocker_path+"/"
+	app.quit_game()
+	check(app.modal_kind == "save_error","failed-save quit keeps game open")
+	await shot("22_save_recovery")
+	app.store.directory = original_directory
+	app.close_modal()
 	# Late-game fixture with all equipment and eight solver drones.
 	app.session.index = 88
 	app.session.credits = 14382
@@ -156,6 +213,19 @@ func run(root_app: Control) -> void:
 	await click(app.board_view.position+app.board_view.cell_position(86))
 	await frames(180)
 	await shot("11_swarm")
+	var sample_times: Array[float] = []
+	var process_times: Array[float] = []
+	for _frame in range(180):
+		var start := Time.get_ticks_usec()
+		await get_tree().process_frame
+		sample_times.append(float(Time.get_ticks_usec()-start)/1000.0)
+		process_times.append(Performance.get_monitor(Performance.TIME_PROCESS)*1000)
+	sample_times.sort()
+	process_times.sort()
+	var performance := {"frames":180,"uncapped_frame_p50_ms":sample_times[90],"uncapped_frame_p95_ms":sample_times[171],"process_p95_ms":process_times[171],"static_memory_mb":Performance.get_monitor(Performance.MEMORY_STATIC)/1048576.0,"draw_calls":Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)}
+	var performance_file := FileAccess.open("res://test_runs/performance.json",FileAccess.WRITE)
+	performance_file.store_string(JSON.stringify(performance,"  "))
+	performance_file.close()
 	app.session.index = 95
 	app.session.start_board()
 	app.session.events.clear()

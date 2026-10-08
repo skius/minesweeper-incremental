@@ -26,4 +26,5 @@ if (Test-Path $runLog) {
     $failures = Select-String -Path $runLog -Pattern 'SCRIPT ERROR:|ERROR:|Parse Error|Assertion failed'
     if ($failures) { $failures | ForEach-Object { Write-Output $_.Line }; exit 1 }
     if ($Mode -in @('test','balance','shots') -and -not (Select-String -Path $runLog -Pattern 'AFTERLIGHT PASS')) { throw 'Test completion marker missing.' }
+    if ($Mode -in @('test','balance','shots')) { (Select-String -Path $runLog -Pattern 'AFTERLIGHT PASS' | Select-Object -Last 1).Line }
 }

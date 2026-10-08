@@ -18,4 +18,5 @@ if (-not $engineProcess.WaitForExit(180000)) { $engineProcess.Kill(); throw ('Ex
 if ($engineProcess.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $filename)) { Get-Content $exportLog -Tail 40; throw 'Export failed.' }
 $failures = Select-String -Path $exportLog -Pattern 'ERROR:|Parse Error|SCRIPT ERROR:'
 if ($failures) { $failures | ForEach-Object { Write-Output $_.Line }; throw 'Export emitted errors.' }
+if ($Target -eq 'Windows Desktop') { Copy-Item -LiteralPath (Join-Path $projectRoot 'docs/PLAYER_README.txt') -Destination (Join-Path $folder 'README.txt') -Force }
 Write-Output ('Exported '+$Target+' to '+$filename)

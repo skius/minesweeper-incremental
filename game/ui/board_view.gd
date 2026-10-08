@@ -20,6 +20,9 @@ var complete_wave: float = -1
 var drone_positions: Array[Vector2] = []
 var drone_targets: Array[Vector2] = []
 var font: Font = ThemeDB.fallback_font
+var tile_style := Palette.box(Color.WHITE,6,Palette.EDGE)
+var shadow_style := Palette.box(Color("07151c"),6)
+var frame_style := Palette.box(Palette.PANEL.darkened(0.12),16,Palette.EDGE)
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_STOP
@@ -96,7 +99,7 @@ func _draw() -> void:
 	geometry()
 	var b := session.board
 	var accent := Color(Content.REGIONS[session.region()].color)
-	draw_style_box(Palette.box(Palette.PANEL.darkened(0.12),16,Palette.EDGE),Rect2(Vector2.ZERO,size))
+	draw_style_box(frame_style,Rect2(Vector2.ZERO,size))
 	# Technical registration marks and coordinates frame the tactile tiles.
 	for side in [Vector2(14,14),Vector2(size.x-14,14),Vector2(14,size.y-14),size-Vector2(14,14)]:
 		draw_line(side-Vector2(4,0),side+Vector2(4,0),Palette.MUTED.darkened(0.6),1)
@@ -138,8 +141,10 @@ func _draw() -> void:
 			fill = fill.lightened(0.07 if not hovered else 0.13)
 			border = accent if hovered or targets.has(i) else accent.darkened(0.45)
 		if not visible_open and cell != MineBoard.HIT:
-			draw_style_box(Palette.box(Color("07151c"),6),Rect2(rect.position+Vector2(0,3),rect.size))
-		draw_style_box(Palette.box(fill,6,border,1),rect)
+			draw_style_box(shadow_style,Rect2(rect.position+Vector2(0,3),rect.size))
+		tile_style.bg_color = fill
+		tile_style.border_color = border
+		draw_style_box(tile_style,rect)
 		if not visible_open and cell == MineBoard.HIDDEN:
 			draw_line(rect.position+Vector2(7,1),rect.position+Vector2(rect.size.x-7,1),Color("42616a"),1,true)
 			var dot_color := Color("49626a")

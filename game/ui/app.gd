@@ -106,6 +106,7 @@ func label_at(parent: Node, text_value: String, rect: Rect2, font_size: int = 16
 	if bold:
 		label.add_theme_font_override("font",font_bold)
 	label.mouse_filter = MOUSE_FILTER_IGNORE
+	label.set_meta("layout_height",rect.size.y)
 	parent.add_child(label)
 	return label
 
@@ -119,6 +120,7 @@ func paragraph(parent: Node, text_value: String, rect: Rect2, font_size: int = 1
 	label.add_theme_color_override("font_color",color)
 	label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	label.mouse_filter = MOUSE_FILTER_IGNORE
+	label.set_meta("layout_height",rect.size.y)
 	parent.add_child(label)
 	return label
 
@@ -211,8 +213,7 @@ func show_menu() -> void:
 		button(ui,"New expedition",Rect2(74,y+60,184,43),confirm_new_game)
 		button(ui,"Credits",Rect2(270,y+60,184,43),show_credits)
 	else:
-		button(ui,"Credits",Rect2(74,y+62,184,43),show_credits)
-		button(ui,"Quit",Rect2(270,y+62,184,43),quit_game)
+		button(ui,"Credits",Rect2(74,y+62,380,43),show_credits)
 	rule(ui,Vector2(74,785),520)
 	label_at(ui,"READ THE GROUND",Rect2(74,807,190,23),12,Palette.MINT,true)
 	label_at(ui,"BUILD YOUR FLEET",Rect2(269,807,190,23),12,Palette.MINT,true)
@@ -459,11 +460,11 @@ func update_shop() -> void:
 			if not b.disabled:
 				b.add_theme_stylebox_override("normal",Palette.box(Palette.MINT.darkened(0.78),6,Palette.MINT.darkened(0.35)))
 
-func on_cell(i: int, right: bool) -> void:
+func on_cell(i: int, right: bool, keyboard_reveal: bool = false) -> void:
 	if modal_kind != "" or session.finished:
 		return
 	get_viewport().gui_release_focus()
-	if right or (settings.flag_mode and selected_tool == ""):
+	if right or (settings.flag_mode and selected_tool == "" and not keyboard_reveal):
 		session.flag(i)
 	elif selected_tool != "":
 		if session.use_tool(selected_tool,i):
@@ -593,16 +594,18 @@ func mark_save() -> void:
 		save_pending = true
 		save_delay = 1.0
 
-func save_game() -> void:
+func save_game() -> bool:
 	if session == null:
-		return
-	if store.write_session(session):
+		return true
+	var success := store.write_session(session)
+	if success:
 		save_status = "All progress saved"
 	else:
 		save_status = "Save needs attention"
 		toast(store.last_error,8)
 	autosave_clock = 0
 	save_pending = false
+	return success
 
 func toast(message: String, duration: float = 3.5) -> void:
 	wipe(toast_layer)
@@ -726,10 +729,10 @@ func show_guide(page: int = 0) -> void:
 		tip = "1 Pulse    2 Crossbeam    3 Horizon    4 Nova    5 Overdrive\nNumbers refer to keyboard shortcuts; tool buttons show their energy cost."
 	else:
 		title = "First a companion. Eventually, a constellation."
-		body = "Scout drones open cells proven safe by visible clues. Cartographers also mark proven charges. A pattern engine compares overlapping groups of clues. Your flags never mislead the fleet.\n\nIf a drone waits, it needs new information. Reveal a tile, chord, or use Pulse. The Oracle upgrade spends energy to find openings when logic stalls. Wingmate, Fleet and Swarm add more workers.\n\nFinishing a field earns research cores. Restore all sixteen fields in a region to wake its relay and receive a larger reward. Six regions lead to the Dawn Engine, then endless exploration.\n\nThree stars: no strikes. Two: at most two. One: you persevered. Equipment does not reduce your rating."
+		body = "Scouts open tiles proved safe by clues. Cartographers mark charges; Pattern engines compare clue groups. Your flags cannot mislead the fleet.\n\nA waiting drone needs an opening: reveal, chord or Pulse. Oracle spends energy to resolve uncertainty. Wingmate, Fleet and Swarm add workers.\n\nClears earn cores. Restore sixteen fields to wake a relay. Six regions lead to the Dawn Engine, then endless exploration.\n\nThree stars: no strikes. Two: at most two. One: you persevered. Tools and drones never reduce your rating."
 		tip = "Mastery trials unlock after each restored relay. They offer denser puzzles and extra research cores. Fleet liveries unlock at 48 and 144 stars."
 	label_at(p,title,Rect2(38,175,745,50),26,Palette.WHITE,true)
-	paragraph(p,body,Rect2(38,240,744,326),18,Palette.MUTED)
+	paragraph(p,body,Rect2(38,240,744,334),17,Palette.MUTED)
 	panel(p,Rect2(38,588,744,81),Palette.PANEL_LIGHT,10)
 	paragraph(p,tip,Rect2(54,602,710,62),15,Palette.MINT)
 
@@ -824,7 +827,7 @@ func show_trial(number: int) -> void:
 func show_credits() -> void:
 	var p := dialog("Made for the small discoveries.",Vector2(750,614),"credits")
 	label_at(p,"AFTERLIGHT",Rect2(38,115,674,60),43,Palette.WHITE,true)
-	paragraph(p,"An original incremental puzzle expedition.\nAll artwork is drawn with geometry. The soundtrack and sound effects are synthesized from oscillators and envelopes. No generated image or audio assets are used.\n\nBuilt with Godot Engine 4.7 (MIT licence). Typography uses Godot's bundled Noto Sans (SIL Open Font License).\n\nInspired by the language of Minesweeper, quiet science fiction, and the pleasure of watching small machines learn.\n\nGame-feel research: Martin Jonasson & Petri Purho's Juice It or Lose It; Jan Willem Nijman's The Art of Screenshake.",Rect2(38,196,674,322),18,Palette.MUTED)
+	paragraph(p,"An original incremental puzzle expedition.\nArt: procedural geometry and cartography.\nMusic and sound: six original scores and oscillator synthesis.\n\nBuilt with Godot Engine 4.7 (MIT licence). Typography uses Godot's bundled Noto Sans (SIL Open Font License).\n\nInspired by quiet science fiction and the pleasure of watching small machines learn.\n\nGame-feel references: Juice It or Lose It, Martin Jonasson & Petri Purho; The Art of Screenshake, Jan Willem Nijman.",Rect2(38,196,674,322),17,Palette.MUTED)
 	button(p,"Engine & library licences",Rect2(38,537,327,44),show_licenses)
 	button(p,"Back to the light",Rect2(385,537,327,44),close_modal,true)
 
@@ -926,7 +929,7 @@ func _input(event: InputEvent) -> void:
 			board_view.keyboard_cell = n
 		get_viewport().gui_release_focus()
 	elif event.keycode in [KEY_SPACE,KEY_ENTER] and board_view.keyboard_cell >= 0:
-		on_cell(board_view.keyboard_cell,false)
+		on_cell(board_view.keyboard_cell,false,true)
 	elif event.keycode == KEY_SPACE or event.keycode == KEY_1:
 		select_tool("probe")
 	elif event.keycode == KEY_F:
@@ -951,7 +954,13 @@ func _notification(what: int) -> void:
 		show_pause()
 
 func quit_game() -> void:
-	save_game()
+	if not save_game():
+		var p := dialog("Your save needs attention",Vector2(676,404),"save_error")
+		paragraph(p,store.last_error+"\n\nYour previous save is still available. Stay here to keep the current expedition in memory, or retry after freeing disk space.",Rect2(38,109,600,146),18)
+		button(p,"Stay here",Rect2(38,305,185,53),close_modal,true)
+		button(p,"Retry save",Rect2(243,305,185,53),quit_game)
+		button(p,"Quit without saving",Rect2(448,305,190,53),func(): get_tree().quit())
+		return
 	store.write_settings(settings)
 	if not OS.has_feature("web"):
 		get_tree().quit()
