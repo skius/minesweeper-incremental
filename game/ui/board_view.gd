@@ -183,7 +183,7 @@ func _draw() -> void:
 			var clue: int = b.clues[i]
 			if clue > 0:
 				var text := str(clue)
-				var font_size := int(tile_size*0.48)
+				var font_size := int(tile_size*0.6)
 				var text_size := font.get_string_size(text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size)
 				draw_string(font,rect.get_center()+Vector2(-text_size.x/2,font_size*0.36),text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size,Color.WHITE if high_contrast else Palette.CLUES[clue])
 			elif b.pockets[i] == 0:
@@ -195,7 +195,7 @@ func _draw() -> void:
 			Palette.icon(self,"flag",rect.get_center(),tile_size*0.4*pop,Color("633c6b"))
 		elif cell == MineBoard.HIT:
 			Palette.icon(self,"nova",rect.get_center(),tile_size*0.38,Palette.CORAL)
-		if session.finished and b.mines[i] == 1 and cell == MineBoard.HIDDEN:
+		if (session.finished or session.layer_ready) and b.mines[i] == 1 and cell == MineBoard.HIDDEN:
 			Palette.icon(self,"prism",rect.get_center(),tile_size*0.25,accent.darkened(0.25))
 	if complete_wave >= 0 and motion > 0:
 		var radius := complete_wave*size.x*0.7

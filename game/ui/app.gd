@@ -84,7 +84,12 @@ func make_theme() -> void:
 	theme.set_stylebox("pressed","Button",Palette.box(Palette.MINT,9))
 	theme.set_stylebox("focus","Button",Palette.box(Color.TRANSPARENT,9,Palette.GOLD,2))
 	theme.set_stylebox("disabled","Button",Palette.box(Palette.PANEL,9,Palette.EDGE.darkened(0.35)))
-	theme.set_stylebox("panel","TooltipPanel",Palette.box(Palette.PANEL_LIGHT,8,Palette.EDGE))
+	var tooltip_style := Palette.box(Palette.PANEL_LIGHT,8,Palette.EDGE)
+	tooltip_style.content_margin_left = 12
+	tooltip_style.content_margin_right = 12
+	tooltip_style.content_margin_top = 8
+	tooltip_style.content_margin_bottom = 8
+	theme.set_stylebox("panel","TooltipPanel",tooltip_style)
 	theme.set_color("font_color","TooltipLabel",Palette.WHITE)
 	theme.set_font_size("font_size","TooltipLabel",16)
 	theme.set_stylebox("normal","TextEdit",Palette.box(Palette.INK,8,Palette.EDGE))
@@ -1014,11 +1019,20 @@ func release_smoke() -> void:
 	save_game()
 	var loaded := store.load_session()
 	ok = ok and loaded != null and loaded.board.cells == session.board.cells
+	while not session.finished:
+		session.probe_one("tool")
+	after_action()
+	show_tree()
+	await smoke_capture("release-tree")
+	await smoke_click(tree_detail.global_position+Vector2(150,555))
+	ok = ok and session.has("lens") and save_game()
+	loaded = store.load_session()
+	ok = ok and loaded != null and loaded.has("lens")
 	show_settings()
 	await smoke_capture("release-settings")
 	show_licenses()
 	await smoke_capture("release-licences")
-	print("AFTERLIGHT %s: exported build boots, renders, accepts input and reloads saves; editor=%s" % ["PASS" if ok else "FAIL",str(OS.has_feature("editor"))])
+	print("AFTERLIGHT %s: exported build boots, renders, buys a tree node and reloads saves; editor=%s" % ["PASS" if ok else "FAIL",str(OS.has_feature("editor"))])
 	get_tree().quit(0 if ok else 1)
 
 func smoke_capture(filename: String) -> void:
