@@ -29,7 +29,6 @@ func run() -> void:
 						unlocks.append({"id":item.id,"field":field+1,"minute":snappedf(elapsed/60,0.1)})
 						elapsed += 2 # Opening a known upgrade and confirming it.
 				if s.layer_ready:
-					strata += 1
 					s.advance_layer()
 					elapsed += 0.7
 				for _sample in range(int(profile.think*5)):
@@ -44,7 +43,7 @@ func run() -> void:
 				break
 			if s.strikes > 0:
 				failures.append("Unsafe policy %s at %d" % [profile.name,field])
-			strata += 1
+			strata += Content.strata_for(field)
 			elapsed += 4
 			if field%16 == 15:
 				regions.append({"region":s.region(),"minutes":snappedf(elapsed/60,0.1),"upgrades":s.upgrades.size(),"reveals":s.total_reveals,"drone":s.total_drone})
@@ -66,63 +65,5 @@ func run() -> void:
 	print("AFTERLIGHT %s: fast campaign policies with aimed tools and chording" % ("PASS" if failures.is_empty() else "FAIL"))
 	quit(0 if failures.is_empty() else 1)
 
-# Decisions use public tile states, plating and logical deductions only. No mine map.
 func smart_action(s: GameSession) -> bool:
-	if not s.board.generated:
-		s.reveal(s.board.height/2*s.board.width+s.board.width/2)
-		return true
-	var b := s.board
-	var best_tool := ""
-	var best_cell := -1
-	var best_gain := 3.0
-	for id in ["cross","line","nova"]:
-		if not s.has(id) or s.energy < s.tool_cost(id):
-			continue
-		# Sample the entire field on a coarse lattice, including its edges.
-		for y in range(0,b.height,2):
-			for x in range(0,b.width,2):
-				var target := y*b.width+x
-				var gain := 0.0
-				for n in s.tool_cells(id,target):
-					if b.cells[n] == MineBoard.HIDDEN:
-						gain += 1.0 if b.plates[n] <= s.excavation_power("tool") else 0.45
-				# Prefer efficient shapes, rather than spending all energy on a tiny patch.
-				gain *= 6.0/s.tool_cost(id)
-				if gain > best_gain:
-					best_gain = gain
-					best_tool = id
-					best_cell = target
-	if best_cell >= 0:
-		return s.use_tool(best_tool,best_cell)
-	var best_chord := -1
-	var chord_gain := 1
-	for i in range(b.cells.size()):
-		var gain := b.chord_targets(i).size()
-		if gain > chord_gain:
-			chord_gain = gain
-			best_chord = i
-	if best_chord >= 0:
-		s.chord(best_chord)
-		return true
-	var moves := b.deductions(true)
-	if s.has("conductor") and not moves.safe.is_empty():
-		for i in range(b.cells.size()):
-			if b.cells[i] == MineBoard.OPEN:
-				var gain := 0
-				for n in b.neighbours(i):
-					gain += 1 if moves.safe.has(n) else 0
-				if gain > chord_gain:
-					chord_gain = gain
-					best_chord = i
-		if best_chord >= 0:
-			s.chord(best_chord)
-			return true
-	if s.probe_charge >= 1 and (moves.safe.size() < 2 or s.has("prism")):
-		return s.use_tool("probe")
-	if not moves.mines.is_empty():
-		s.flag(moves.mines[0])
-		return true
-	if not moves.safe.is_empty():
-		s.reveal(moves.safe[0])
-		return true
-	return false
+	return preload("res://tests/player_policy.gd").act(s)

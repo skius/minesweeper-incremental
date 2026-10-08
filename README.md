@@ -2,7 +2,7 @@
 
 A complete solo Minesweeper expedition built with Godot 4.7.2 and the Compatibility renderer. Read the ground, collect light, and build a fleet that learns to work beside you.
 
-![Afterlight title screen](docs/screenshots/afterlight.png)
+![A quiet beginning in Afterlight](docs/screenshots/opening.png)
 
 ## Play
 
@@ -16,13 +16,17 @@ powershell -File tools/run.ps1 -Mode play
 
 ## The expedition
 
-- Six regions, 96 campaign fields, twelve mastery trials, a final ending and endless exploration.
-- Twenty-four equipment discoveries: safe beams, chain chording, pattern recognition, oracle probes, and a fleet growing from one drone to eight.
+- Six regions, 96 excavation sites with 628 strata, twelve mastery trials, a final ending and endless exploration.
+- Fifty discoveries in a branching upgrade tree: shaped beams, excavation drills, chain reactions, pattern recognition, oracle probes, and a fleet growing from one drone to eight.
 - Mistakes reduce the field rating but preserve earnings and progress. A rechargeable safe probe resolves uncertainty.
 - Main menu, pause, settings, automatic saves with verified backup recovery, field guide, atlas, records and local screenshot reports.
 - Entirely procedural artwork and audio. Six region scores are baked from the included oscillator synthesis code; no generative image/audio service or third-party media assets were used.
 
-The content is tuned toward roughly two hours including mastery trials. A moderate simulated policy takes about 119 minutes; actual human pacing depends on puzzle skill and upgrade choices. See `docs/QA.md` for what was tested and its limits.
+The campaign is tuned toward roughly three hours for fast play, before optional mastery trials. One-second simulated decision policies take 173–176 minutes; a three-second policy takes 344 minutes. These are synthetic policies, not measured human sessions. See `docs/QA.md` for what was tested and its limits.
+
+The opening exposes one small field. Controls and systems unfold as you play. Descriptions live in hover help and the separate Grow map; upgrade demonstrations show what equipment does.
+
+![The growing discovery tree](docs/screenshots/tree.png)
 
 ## Controls
 
@@ -33,7 +37,9 @@ The content is tuned toward roughly two hours including mastery trials. A modera
 | Select a board tile | Arrow keys |
 | Reveal selected tile | Enter / Space |
 | Flag selected tile; otherwise toggle flag mode | F |
-| Guaranteed safe Pulse | 1; Space without a selected tile |
+| Guaranteed safe Pulse | 1; Space without a selected tile. Aim after Focused pulse. |
+| Open the discovery tree | Tab / Grow |
+| Descend after clearing a stratum | Enter / Descend |
 | Crossbeam / Horizon / Nova | 2 / 3 / 4, then choose a tile |
 | Solar overdrive | 5 |
 | Cancel aiming / pause / close panel | Esc |
@@ -45,7 +51,7 @@ The first reveal is safe. Numbers count charges in all eight neighbouring tiles.
 
 ## Saves and settings
 
-Windows save location: `%APPDATA%/Godot/app_userdata/Afterlight/`. The primary save and its verified backup store the exact field, equipment, tools, trial and completion state. Settings save immediately. Reports stay under `reports/` in this directory and are never uploaded automatically.
+Windows save location: `%APPDATA%/Godot/app_userdata/Afterlight/`. The primary save and its verified backup store the exact field, remaining plating, stratum, equipment, tools, trial and completion state. Version 1.0 saves migrate without resetting the current field. Settings save immediately. Reports stay under `reports/` in this directory and are never uploaded automatically.
 
 Tests use separate paths inside `test_runs/` and do not access player data.
 
@@ -55,6 +61,7 @@ Tests use separate paths inside `test_runs/` and do not access player data.
 powershell -File tools/bootstrap.ps1
 powershell -File tools/run.ps1 -Mode shots
 powershell -File tools/run.ps1 -Mode balance
+powershell -File tools/run.ps1 -Mode power
 powershell -File tools/export.ps1
 ```
 

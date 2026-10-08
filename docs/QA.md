@@ -1,33 +1,29 @@
-# Quality record
+# Revision 1.1 verification
 
-## Rendering and controls
-Godot 4.7.2, Compatibility / OpenGL 3.3, Windows, NVIDIA RTX 4090. Native tests run on a separate invisible desktop with dummy audio and isolated saves.
+This supersedes the original [1.0 quality record](QA-1.0.md). All native sessions use Compatibility rendering on the supplied Godot 4.7.2, on a separate Windows desktop with dummy audio and isolated test saves. No independent human playtest is claimed.
 
-The first visual pass covered title, fresh field, revealed field, pause, settings, guide, debrief, midgame, aimed crossbeam, atlas, swarm and ending. Found and repaired: Label minimum-width caching caused text overflow; focused mint buttons inherited white text; transient messages obscured modal titles. Upgrade lists now put unowned equipment first.
+## Rules and progression
+- 71,127 rule/persistence checks pass, including plated excavation, shape upgrades, depth transitions, non-duplicated rewards, exact saves and version-1 migration. Every one of the fifty prerequisite paths reaches the origin without a cycle.
+- Three complete campaign policies reach the ending and acquire all fifty discoveries without solver/tool strikes or economic dead ends. The policy uses visible deductions, correct flags, chording, footprint scoring, free probes and overdrive. Menus receive four seconds per site and purchases two seconds each; no fabricated long pauses.
 
-Tests feed Godot mouse and key input into the actual viewport. Rules tests cover many seeds, flood fill, solver correctness, guaranteed safe starts, completion, purchasing, save roundtrips and backup recovery. Results are scripted playtests; no independent human playtest has been performed.
+| Policy | Decision interval | Campaign minutes | Inputs |
+|---|---:|---:|---:|
+| Tools first | 1 second | 175.7 | 8,894 |
+| Fleet first | 1 second | 173.0 | 8,873 |
+| Deliberate craft | 3 seconds | 344.0 | 5,997 |
 
-## Pacing model
-Four policy simulations play all 96 fields. The moderate policy makes a decision every seven simulated seconds, uses visible logical deductions, chooses dense covered rows for its beam, and buys affordable available equipment. Drones tick at 0.2-second resolution; menus receive a twelve-second allowance per field. It estimates 79.6 minutes for the campaign and 39.2 minutes for all twelve optional trials, approximately two hours combined. Faster players can finish materially sooner. A learner policy estimates about 100 minutes for the campaign alone.
+All campaigns contain 628 strata. The deliberately fast policies know the logical deductions immediately; they are not a shortest-possible speedrun solver. Human skill, chording habits, reading and build choices can change the duration substantially. Mastery trials are additional content, excluded from these timing figures. The longest gap between purchases in the final fast run is 11.1 minutes; most are shorter, and the last discovery arrives at site 92.
 
-This measures a synthetic decision policy, not a guarantee of human duration or subjective enjoyment. A manual-only single-cell solver is deliberately inefficient and does not model human chording well.
+An identical site-49 stratum provides a separate power check: early equipment needs 100 seconds / 100 inputs; midgame equipment 12 seconds / 12 inputs; complete equipment 5 seconds / 4 inputs. All use the same seed and policy. This checks that upgrades visibly overpower earlier challenges instead of merely keeping pace with escalating work.
 
-## Source integrity
-All visual art consists of hand-specified geometry, drawing code and deterministic procedural patterns. Music and SFX are synthesized with oscillators and envelopes. No image/audio generation tool was used, and no third-party media was downloaded. Engine and bundled-font notices are available through Credits → Engine & library licences.
+## Native interface and visual iteration
+- 189 input/state/layout checks pass over 27 viewport screenshots. These cover the opening, hover help, first purchases, tree exploration, all fifty description layouts, focused Pulse, beams, plating, descent, menus, settings, records, saves, failure recovery and ending. Viewports include 960 × 600, 1440 × 900 and 1920 × 1080.
+- A fresh field has one non-board button: Pause. Pulse follows the opening, Grow and currencies follow the first clear; additional tool buttons require ownership.
+- An agent played the opening from visible clues using flags and chords, purchased Survey lens, continued to site 2 and purchased Twin pulse. Seventeen harness actions were recorded, including setup and quit. This is additional agent play, not a human session.
+- Inspected and corrected crossed tree paths, drone docking over title text, dense plate stripes, an oversized debrief, tooltip grammar, text bounds and backdrop polygon triangulation. The help pages now pair short explanations with animated diagrams.
+- Procedural keycaps and the sky gradient are cached by the renderer. A 180-frame native sample after this change measured roughly 6.8 ms median and 13.1 ms p95 between process frames, with 1,135 draw calls on an RTX 4090. These are machine-specific observations, not minimum hardware claims.
 
-## Final verification
+## Assets and packaging
+All geometry, textures, icons, music and sound remain procedural and repository-owned. No image/audio generation service or downloaded media was used. Six oscillator-based scores and their synthesis source are retained. In-game engine and library licences remain available.
 
-- **71,004 rules and persistence checks pass.** Eighty seeded boards exercise logical deductions; fixtures cover dangerous chords, safe tools, trial restrictions, endings, save roundtrips, corrupt-primary recovery and mid-board state.
-- **270 native input, state and layout checks pass.** Twenty-two Godot viewport captures cover menu, board, debrief, every guide page, credits, licences, settings, trials, regional transmissions, records, reporting, swarm, ending and failed-save recovery. Window sizes include 960×600, 1440×900 and 1920×1080.
-- **Visual decision play:** the agent solved the opening field from visible clues with flags and chords, obtained a perfect rating, bought equipment, paused, returned to the menu and resumed. Twenty-six input actions were recorded. This is additional agent playtesting, not an independent human session.
-- **Four complete campaign simulations and all twelve trials pass.** No solver/tool strikes, inaccessible endings or purchase dead ends. Pacing figures above come from these runs.
-- **Native performance sample:** 180 rendered late-game frames on the machine above: about 15.1 ms median and 16.0 ms at the 95th percentile between process frames; about 59 MB tracked static memory. These are machine-specific observations, not minimum hardware guarantees. Reusing tile styles preserved the reference frame pixel-for-pixel.
-- **Audio:** all six 32-second source WAVs have zero-valued endpoints and peaks below 0.10 full scale. Native tests verify imported duration and the complete 705,600-sample loop boundary; compressed sample byte length must not be used as a frame count.
-- **Windows release:** the actual release executable and PCK boot, render, accept input, save and reload, and show licences in the isolated native smoke test. It confirms `editor=false`.
-- **Web:** the single-threaded Compatibility export completes successfully. Browser runtime and browser persistence have not been playtested.
-
-Final visual corrections included condensed guide/credits text to prevent footer overlap, consistent dark text on mint focus buttons, a thin energy gauge, and an explicit failed-save quit dialog. Reports and saves from all harnesses stay in ignored test folders.
-
-## Practical limits
-
-No independent human session, controller support, localisation, achievements service, store integration or external distribution has been performed. Two-hour pacing is a content target supported by a simulation, not a guarantee. The native game, campaign, ending, menus and save system are implemented; the standalone build is the delivery for player evaluation.
+The Windows release must pass its own isolated native boot/input/save/reload smoke after export. Compatibility Web export is provided; browser runtime and persistence have not been validated. Player reports remain local; tests never touch normal saves. Store integration is outside scope.

@@ -38,24 +38,24 @@ const UPGRADES = [
 	{"id":"line","name":"Horizon beam","group":0,"cost":950,"cores":3,"rank":24,"pre":"cross","icon":"line","desc":"New tool: reveal every safe tile in the selected row. Costs 10 energy.","branch":0,"depth":4,"side":-1},
 	{"id":"compass","name":"Crystal compass","group":2,"cost":1500,"cores":2,"rank":25,"pre":"prism","icon":"prism","desc":"See buried crystal pockets before uncovering them.","branch":4,"depth":1,"side":1},
 	{"id":"bounty","name":"Pocket refinery","group":2,"cost":2100,"cores":3,"rank":26,"pre":"salvage","icon":"prism","desc":"Pockets produce 25 extra light. Every perfect clear awards an extra core.","branch":5,"depth":2,"side":1},
-	{"id":"kinetic","name":"Kinetic collector","group":2,"cost":1600,"cores":3,"rank":27,"pre":"flywheel","icon":"battery","desc":"Breaking plates by hand produces energy and recharges Pulse.","branch":2,"depth":2,"side":-1},
+	{"id":"kinetic","name":"Kinetic collector","group":2,"cost":3500,"cores":3,"rank":53,"pre":"flywheel","icon":"battery","desc":"Breaking plates by hand produces energy and recharges Pulse.","branch":2,"depth":2,"side":-1},
 	{"id":"excavator","name":"Excavator chassis","group":1,"cost":1900,"cores":3,"rank":28,"pre":"pair","icon":"drone","desc":"Drones break three layers of plating per visit.","branch":1,"depth":2,"side":1},
 	{"id":"perforator","name":"Bore laser","group":0,"cost":2400,"cores":3,"rank":30,"pre":"diagonal","icon":"line","desc":"Every beam hit breaks four layers of buried plating.","branch":0,"depth":3,"side":1},
 	{"id":"fleet","name":"Fieldwork fleet","group":1,"cost":2800,"cores":4,"rank":31,"pre":"excavator","icon":"fleet","desc":"Four drones work at once. Recovered pockets briefly accelerate the fleet.","branch":1,"depth":4,"side":-1},
-	{"id":"echochamber","name":"Hollow resonance","group":2,"cost":2400,"cores":3,"rank":33,"pre":"harvester","icon":"pulse","desc":"Opening a zero-clue cavern restores one free Pulse.","branch":5,"depth":3,"side":-1},
+	{"id":"echochamber","name":"Hollow resonance","group":2,"cost":6400,"cores":3,"rank":69,"pre":"harvester","icon":"pulse","desc":"Opening a zero-clue cavern restores one free Pulse.","branch":5,"depth":3,"side":-1},
 	{"id":"relay","name":"Relay network","group":2,"cost":5100,"cores":5,"rank":36,"pre":"compass","icon":"line","desc":"Start expeditions with two extra safe openings. Drone reveals pay full light.","branch":4,"depth":2,"side":1},
 	{"id":"capacitor","name":"Induction loop","group":2,"cost":3300,"cores":4,"rank":37,"pre":"battery","icon":"battery","desc":"Drone-mapped charges restore energy. Passive energy returns twice as fast.","branch":2,"depth":2,"side":1},
-	{"id":"sentry","name":"Rescue flare","group":2,"cost":2700,"cores":3,"rank":39,"pre":"shield","icon":"shield","desc":"A protected strike sends a free safe probe into the field.","branch":3,"depth":4,"side":-1},
-	{"id":"cartogram","name":"Deep scanner","group":2,"cost":3000,"cores":3,"rank":40,"pre":"compass","icon":"lens","desc":"Unfocused pulses seek the largest new opening, instead of the nearest edge.","branch":4,"depth":2,"side":-1},
+	{"id":"sentry","name":"Rescue flare","group":2,"cost":6000,"cores":3,"rank":67,"pre":"shield","icon":"shield","desc":"A protected strike sends a free safe probe into the field.","branch":5,"depth":4,"side":-1},
+	{"id":"cartogram","name":"Deep scanner","group":2,"cost":9300,"cores":3,"rank":87,"pre":"compass","icon":"lens","desc":"Unfocused pulses seek the largest new opening, instead of the nearest edge.","branch":4,"depth":2,"side":-1},
 	{"id":"vertical","name":"Meridian","group":0,"cost":3700,"cores":4,"rank":42,"pre":"line","icon":"cross","desc":"Horizon cuts a full column as well as a row.","branch":0,"depth":4,"side":1},
 	{"id":"nova","name":"Nova charge","group":0,"cost":3800,"cores":5,"rank":43,"pre":"line","icon":"nova","desc":"New tool: sweep a safe 5 by 5 area. Costs 16 energy; capacity becomes 24.","branch":0,"depth":5,"side":-1},
 	{"id":"synchrony","name":"Coordinated strike","group":1,"cost":4200,"cores":4,"rank":45,"pre":"logic","icon":"fleet","desc":"A successful manual chord calls an immediate fleet cycle.","branch":1,"depth":3,"side":1},
 	{"id":"seismic","name":"Seismic rhythm","group":2,"cost":4500,"cores":4,"rank":46,"pre":"fracture","icon":"nova","desc":"Every sixth manual excavation sends a safe crossbeam through that tile.","branch":3,"depth":3,"side":-1},
 	{"id":"oracle","name":"Oracle beacon","group":1,"cost":4400,"cores":5,"rank":47,"pre":"logic","icon":"lens","desc":"When logic stalls, the fleet spends 3 energy to probe safe ground.","branch":1,"depth":4,"side":1},
-	{"id":"magnet","name":"Pocket gravity","group":2,"cost":4000,"cores":4,"rank":49,"pre":"bounty","icon":"prism","desc":"Each pocket pulls open two more safe tiles nearby.","branch":5,"depth":3,"side":1},
+	{"id":"magnet","name":"Pocket gravity","group":2,"cost":8800,"cores":4,"rank":83,"pre":"bounty","icon":"prism","desc":"Each pocket pulls open two more safe tiles nearby.","branch":5,"depth":3,"side":1},
 	{"id":"launchpad","name":"Launch rail","group":2,"cost":4300,"cores":4,"rank":51,"pre":"relay","icon":"drone","desc":"The fleet makes the first safe opening on each new stratum.","branch":4,"depth":3,"side":-1},
 	{"id":"supercap","name":"Storm capacitor","group":2,"cost":5700,"cores":4,"rank":57,"pre":"capacitor","icon":"battery","desc":"Store 40 energy: enough to combine Nova and Horizon.","branch":2,"depth":3,"side":-1},
-	{"id":"conductor","name":"Clue conductor","group":2,"cost":5800,"cores":4,"rank":59,"pre":"chord","icon":"prism","desc":"Click a clue to open neighbours proved safe, even without placing flags.","branch":3,"depth":3,"side":1},
+	{"id":"conductor","name":"Clue conductor","group":2,"cost":8400,"cores":4,"rank":81,"pre":"chord","icon":"prism","desc":"Click a clue to open neighbours proved safe, even without placing flags.","branch":3,"depth":3,"side":1},
 	{"id":"resonance","name":"Resonance","group":2,"cost":6200,"cores":5,"rank":61,"pre":"supercap","icon":"pulse","desc":"Every tool reveal earns energy back. Smart sweeps skip already open ground.","branch":2,"depth":3,"side":1},
 	{"id":"crucible","name":"Shard furnace","group":2,"cost":6000,"cores":4,"rank":63,"pre":"echochamber","icon":"battery","desc":"Every shattered plate, including drone work, fuels your tools.","branch":5,"depth":4,"side":-1},
 	{"id":"swarm","name":"Daybreak swarm","group":1,"cost":7000,"cores":6,"rank":65,"pre":"fleet","icon":"fleet","desc":"Eight drones. Each cycle paints a sweeping ribbon across the field.","branch":1,"depth":5,"side":-1},
@@ -64,7 +64,7 @@ const UPGRADES = [
 	{"id":"aftershock","name":"Event horizon","group":0,"cost":8500,"cores":6,"rank":76,"pre":"nova","icon":"nova","desc":"Nova grows to 7 × 7 and cracks every plate inside.","branch":0,"depth":5,"side":1},
 	{"id":"recycler","name":"Closed circuit","group":2,"cost":8000,"cores":5,"rank":78,"pre":"resonance","icon":"battery","desc":"Beams refund energy for open tiles in their footprint. Precision becomes optional.","branch":2,"depth":4,"side":-1},
 	{"id":"overdrive","name":"Solar overdrive","group":1,"cost":10000,"cores":6,"rank":80,"pre":"swarm","icon":"nova","desc":"New tool: 12 seconds of rapid fleet cycles. Costs 12 energy.","branch":1,"depth":5,"side":1},
-	{"id":"legacy","name":"Unbroken current","group":2,"cost":10000,"cores":6,"rank":86,"pre":"aurora","icon":"nova","desc":"Your chain carries between strata and sites. All excavation breaks six plate layers.","branch":5,"depth":4,"side":1}
+	{"id":"legacy","name":"Unbroken current","group":2,"cost":11000,"cores":6,"rank":91,"pre":"aurora","icon":"nova","desc":"Your chain carries between strata and sites. All excavation breaks six plate layers.","branch":4,"depth":4,"side":1}
 ]
 
 const TRANSMISSIONS = [
@@ -115,10 +115,19 @@ static func strata_for(index: int, trial: int = -1) -> int:
 		return 1
 	return [2,3,5,7,9,12][region_for(index)] + (1 if index % REGION_LENGTH >= 12 else 0)
 
+# Positions follow dependency forks, so branches never double back across their parent.
+const TREE_LAYOUT = {
+	"probe2":[0,145,0],"focus":[0,240,-60],"reservoir":[0,345,-100],"cross":[0,240,60],"diagonal":[0,345,115],"perforator":[0,460,145],"line":[0,345,10],"vertical":[0,460,35],"nova":[0,460,-55],"aftershock":[0,560,-70],
+	"drone":[1,145,0],"flagger":[1,245,-60],"logic":[1,345,-90],"oracle":[1,455,-125],"synchrony":[1,455,-25],"pair":[1,245,60],"excavator":[1,345,100],"fleet":[1,455,120],"swarm":[1,555,140],"overdrive":[1,650,160],
+	"battery":[2,145,0],"flywheel":[2,245,-60],"kinetic":[2,345,-90],"capacitor":[2,245,60],"supercap":[2,345,95],"resonance":[2,445,125],"recycler":[2,555,150],
+	"chain":[3,145,0],"drill":[3,245,-60],"fracture":[3,345,-90],"seismic":[3,455,-125],"chord":[3,245,60],"conductor":[3,355,100],
+	"prism":[4,145,0],"compass":[4,245,0],"cartogram":[4,355,-75],"relay":[4,355,70],"launchpad":[4,455,75],"autodescent":[4,555,85],"aurora":[4,650,100],"legacy":[4,745,115],
+	"salvage":[5,145,0],"shield":[5,245,-80],"sentry":[5,365,-125],"harvester":[5,245,80],"echochamber":[5,365,125],"crucible":[5,475,145],"bounty":[5,260,0],"magnet":[5,380,0]
+}
+
 static func tree_position(item: Dictionary) -> Vector2:
 	if item.id == "lens":
 		return Vector2.ZERO
-	var angle: float = item.branch * TAU / 6 - PI/2
-	var direction := Vector2.from_angle(angle)
-	var tangent := direction.orthogonal()
-	return direction * (110+int(item.depth)*95) + tangent * int(item.side) * (42+int(item.depth)*12)
+	var placement: Array = TREE_LAYOUT[item.id]
+	var direction := Vector2.from_angle(placement[0]*TAU/6-PI/2)
+	return direction*placement[1]+direction.orthogonal()*placement[2]

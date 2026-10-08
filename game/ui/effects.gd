@@ -22,8 +22,12 @@ func burst(origin: Vector2, color: Color, count: int = 12, target: Vector2 = Vec
 		particles.pop_front()
 
 func popup(origin: Vector2, text: String, color: Color) -> void:
+	for popup_item in popups:
+		if popup_item.age<0.2 and popup_item.p.distance_to(origin)<95 and text.begins_with("+"):
+			popup_item.text="+%d" % (int(popup_item.text.trim_prefix("+"))+int(text.trim_prefix("+")))
+			return
 	popups.append({"p":origin,"text":text,"color":color,"age":0.0})
-	if popups.size() > 9:
+	if popups.size() > 4:
 		popups.pop_front()
 
 func ring(origin: Vector2,color: Color) -> void:
@@ -66,9 +70,9 @@ func _draw() -> void:
 		var color := Color(p.color,minf(1,(1.4-p.age)*2))
 		var origin: Vector2 = p.p+Vector2(0,-p.age*35*motion)
 		var font := ThemeDB.fallback_font
-		var text_size := font.get_string_size(p.text,HORIZONTAL_ALIGNMENT_LEFT,-1,22)
-		draw_string_outline(font,origin-Vector2(text_size.x/2,0),p.text,HORIZONTAL_ALIGNMENT_LEFT,-1,22,5,Color(Palette.INK,color.a))
-		draw_string(font,origin-Vector2(text_size.x/2,0),p.text,HORIZONTAL_ALIGNMENT_LEFT,-1,22,color)
+		var text_size := font.get_string_size(p.text,HORIZONTAL_ALIGNMENT_LEFT,-1,18)
+		draw_string_outline(font,origin-Vector2(text_size.x/2,0),p.text,HORIZONTAL_ALIGNMENT_LEFT,-1,18,5,Color(Palette.INK,color.a))
+		draw_string(font,origin-Vector2(text_size.x/2,0),p.text,HORIZONTAL_ALIGNMENT_LEFT,-1,18,color)
 	for r in rings:
 		draw_arc(r.p,12+r.age*95*motion,0,TAU,50,Color(r.color,0.7*(1-r.age/0.8)),2,true)
 	for b in beams:

@@ -9,6 +9,7 @@ if (-not $enginePath -and (Test-Path (Join-Path $projectRoot '.env.local'))) {
 if (-not $enginePath -or -not (Test-Path -LiteralPath $enginePath)) { throw 'Set GODOT_EXE or .env.local.' }
 $folder = Join-Path $projectRoot ('builds/'+ $(if ($Target -eq 'Web') {'web'} else {'windows'}))
 New-Item -ItemType Directory -Force -Path $folder | Out-Null
+Set-Content -LiteralPath (Join-Path $projectRoot 'builds/.gdignore') -Value '' -NoNewline
 New-Item -ItemType Directory -Force -Path (Join-Path $projectRoot 'test_runs') | Out-Null
 $exportLog = Join-Path $projectRoot 'test_runs/export.log'
 $filename = Join-Path $folder $(if ($Target -eq 'Web') {'index.html'} else {'Afterlight.exe'})

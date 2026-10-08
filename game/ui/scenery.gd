@@ -6,30 +6,47 @@ var region: int = 0
 var menu: bool = true
 var motion: float = 1
 var restored: float = 0.0
+var sky_texture: GradientTexture2D
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sky_texture = GradientTexture2D.new()
+	sky_texture.gradient = Gradient.new()
+	sky_texture.gradient.set_color(0,Color("293453"))
+	sky_texture.gradient.set_color(1,Color("10192b"))
+	sky_texture.width = 4
+	sky_texture.height = 900
+	sky_texture.fill_from = Vector2.ZERO
+	sky_texture.fill_to = Vector2(0,1)
 
 func _process(delta: float) -> void:
 	time += delta * motion
 	queue_redraw()
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), Palette.INK)
+	draw_rect(Rect2(Vector2.ZERO,size),Color("222b48"))
 	var accent := Color(Content.REGIONS[region].color)
-	# Sparse, deterministic paper-like sky texture and chart lines.
-	for i in range(150):
-		var p := Vector2(fmod(i * 317.7 + 17, 1440), fmod(i * 149.3 + 31, 900))
-		var a := 0.05 + 0.04 * sin(i + time * 0.3)
-		draw_circle(p, 0.7 if i % 4 else 1.2, Color(accent, a))
-	for x in range(0, 1440, 80):
-		draw_line(Vector2(x,0),Vector2(x,900),Color(accent,0.025),1)
-	for y in range(0, 900, 80):
-		draw_line(Vector2(0,y),Vector2(1440,y),Color(accent,0.025),1)
+	# Procedural desktop wallpaper: evening bands, distant hills, sparse pixels.
+	draw_texture_rect(sky_texture,Rect2(Vector2.ZERO,size),false)
+	for layer in range(4):
+		var poly := PackedVector2Array([Vector2(0,900)])
+		for x in range(0,1441,40):
+			var y := 690+layer*49+sin(x*0.004+layer*1.5)*90+sin(x*0.011+layer)*21
+			poly.append(Vector2(x,minf(y,876)))
+		poly.append(Vector2(1440,900))
+		draw_colored_polygon(poly,Color("2c465a").darkened(layer*0.17))
+	for i in range(76):
+		var p := Vector2(fmod(i*317.7+17,1440),fmod(i*149.3+31,600))
+		draw_rect(Rect2(p,Vector2(2,2)),Color(accent,0.09+0.06*sin(i+time*0.3)))
+	# Desktop rail, present as a quiet framing device rather than extra controls.
+	Palette.bevel(self,Rect2(0,883,1440,17),Color("536377"),1)
+	draw_rect(Rect2(6,888,7,7),accent)
+	draw_string(ThemeDB.fallback_font,Vector2(22,895),"AFTERLIGHT / FIELD OS",HORIZONTAL_ALIGNMENT_LEFT,-1,9,Palette.WHITE)
+	draw_string(ThemeDB.fallback_font,Vector2(1328,895),"LOCAL · OFFLINE",HORIZONTAL_ALIGNMENT_LEFT,-1,9,Palette.WHITE)
 	if not menu:
 		return
 	# Orbital cartography: hand-built vector artwork, slowly breathing in place.
-	var origin := Vector2(1030,446)
+	var origin := Vector2(1030,453)
 	for r in [160,222,279,336]:
 		draw_arc(origin,r,0,TAU,120,Color(accent,0.13),1,true)
 	draw_line(Vector2(687,446),Vector2(1390,446),Color(accent,0.16),1,true)
@@ -71,4 +88,4 @@ func _draw() -> void:
 		draw_circle(p,20,Palette.INK)
 		draw_arc(p,20,0,TAU,28,Color(accent,0.35),1,true)
 		Palette.icon(self,"drone",p,22,accent)
-	draw_string(ThemeDB.fallback_font,Vector2(821,754),"36° 08' N     /     A WORLD WORTH RESTORING",HORIZONTAL_ALIGNMENT_LEFT,-1,12,Palette.MUTED)
+	draw_string(ThemeDB.fallback_font,Vector2(821,754),"RESTORE.   RESEARCH.   REPEAT.",HORIZONTAL_ALIGNMENT_LEFT,-1,12,Palette.MUTED)

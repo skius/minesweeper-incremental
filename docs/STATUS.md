@@ -23,7 +23,9 @@ Standalone Windows and Compatibility Web exports are generated under ignored `bu
 
 Delivery is on `codex/afterlight`; gameplay has not been merged into main, respecting the inherited player-review workflow. No store work was performed. All artwork and sound are procedural. Future changes should begin with the player trying this integrated build, rather than creating alternative prototypes.
 
-## Revision 1.1 in progress
-Player feedback supersedes the original visual/content sign-off: reduce screen text and choices, introduce concepts gradually, build a radial branching tree with 50 meaningful discoveries, target roughly three hours using faster player models, and establish a modern Windows 95/XP-inspired identity. No scanline readability penalty; geometry and synthesized audio only.
+## Revision 1.1 delivery work
+The requested visual and progression revision supersedes the 1.0 sign-off. Implemented: modern retro field terminal, a 6 × 5 opening with staged disclosure, contextual hover help, fifty branching discoveries with animated previews, deeper sites and excavation plating, and exact version-1 save migration.
 
-Core implementation now adds strata, visible excavation plating, 26 additional discoveries and version-1 save migration. New pacing policies make one-second decisions and use aimed beams and chording. UI is being replaced with a quiet field window and a separate upgrade map; full native/visual validation and new release packaging remain outstanding. Previous 1.0 pacing/visual claims do not validate this revision.
+Current checks: 71,127 core/persistence assertions; 189 native input/state/layout checks; 27 reviewed captures. The native opening was also played from visible clues through the first two purchases. Complete fast campaigns take 175.7 and 173.0 modelled minutes; the three-second policy takes 344.0. All reach fifty discoveries. On an identical test stratum, early/mid/complete equipment requires 100/12/5 seconds. No independent human duration or enjoyment claim is made.
+
+UI and game rules are complete. The new Windows/Web exports, final release smoke, archive and final repository checkpoint are the remaining delivery steps. All art/audio remain procedural. Details: `docs/QA.md`, `docs/DESIGN.md` and `docs/TESTING.md`.

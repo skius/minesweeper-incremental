@@ -25,3 +25,12 @@ followed by endless exploration. Trials unlock after each restored region.
 All artwork and audio are procedural. The source project includes the geometric
 art and oscillator synthesis code. Godot and third-party library licences are
 available from Credits > Engine & library licences.
+
+WHAT'S NEW IN 1.1
+A modern retro desktop; a small opening with gradually revealed controls;
+hover help and animated upgrade demonstrations; fifty branching discoveries;
+deeper excavation sites, plated ground and stronger late-game automation.
+Tab opens Grow. Hover nodes for details; drag/scroll to explore the tree.
+After Focused pulse, select Pulse and aim at the desired part of the field.
+A cleared stratum has a Descend button. Enter also descends.
+Existing 1.0 expedition saves remain compatible.

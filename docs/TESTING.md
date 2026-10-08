@@ -16,3 +16,8 @@ The visual harness also checks settings persistence, pause isolation, keyboard f
 `tools/hidden_run.py --scenario manual` exposes a development-only local command file and returns only visible clues for visual decision play. It keeps an action history; no hidden mine information is exposed.
 
 `tools/export.ps1` creates the Windows release. Test the shipped executable with `hidden_run.py --scenario release --engine <exported-exe> --project <export-folder> --log <absolute-log> --data-root <isolated-test-folder>`. Release templates intentionally reject `--path`, so the launcher omits that editor-only argument for this mode. The smoke checks rendering, real input, persistence and library notices from the actual PCK; it refuses to use the player's save directory.
+
+## Revision 1.1
+`balance` exercises three complete campaigns with one- and three-second policies. It can take several minutes and has a bounded 15-minute engine timeout. `tests/player_policy.gd` contains the common visible-information decision policy; it never reads the mine map.
+
+`power` runs that policy with three equipment tiers on the same stratum to measure actual power growth. Results are stored in `test_runs/power_curve.json`. The native `shots` pass now captures 27 states and checks all fifty upgrade descriptions. Profiling writes `test_runs/performance_v2.json`.

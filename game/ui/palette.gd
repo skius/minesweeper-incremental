@@ -1,23 +1,30 @@
 class_name Palette
 extends RefCounted
 
-const INK = Color("091820")
-const PANEL = Color("102630")
-const PANEL_LIGHT = Color("17343d")
-const EDGE = Color("294750")
-const WHITE = Color("f3eedf")
-const MUTED = Color("9aafb1")
-const MINT = Color("78dfbd")
-const GOLD = Color("f2cf81")
-const CORAL = Color("ef947e")
+const INK = Color("141727")
+const PANEL = Color("252b3b")
+const PANEL_LIGHT = Color("343e51")
+const EDGE = Color("586479")
+const WHITE = Color("f5f0df")
+const MUTED = Color("aeb8c8")
+const MINT = Color("9ae4be")
+const GOLD = Color("f5ca7a")
+const CORAL = Color("f4988f")
 const CLUES = [Color("779797"),Color("83c9ed"),Color("92dbb0"),Color("efad7b"),Color("bfa8eb"),Color("ed9bb7"),Color("e1d08b"),Color("eeeecc"),Color("ffffff")]
 
 static func box(color: Color, radius: int = 12, border: Color = Color.TRANSPARENT, border_width: int = 1) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.bg_color = color
-	s.set_corner_radius_all(radius)
+	s.set_corner_radius_all(mini(radius,5))
 	s.border_color = border
 	s.set_border_width_all(border_width)
+	if color.a > 0 and radius>0:
+		s.border_color = border if border.a>0 else color.lightened(0.22)
+		s.border_color = s.border_color.lightened(0.08)
+		s.set_border_width_all(maxi(1,border_width))
+		s.shadow_color = Color(0.025,0.035,0.06,0.45)
+		s.shadow_size = 4
+		s.shadow_offset = Vector2(0,4)
 	return s
 
 static func icon(canvas: CanvasItem, kind: String, center: Vector2, size_value: float, color: Color) -> void:
@@ -65,3 +72,24 @@ static func star(canvas: CanvasItem, center: Vector2, radius: float, color: Colo
 	for i in range(8):
 		points.append(center + Vector2.from_angle(i * TAU / 8 - PI/2) * (radius if i % 2 == 0 else radius * 0.26))
 	canvas.draw_colored_polygon(points, color)
+
+# A bevel uses explicit top light and bottom shade, like a physical keycap.
+static func bevel(canvas: CanvasItem, rect: Rect2, face: Color, thickness: float = 3, raised: bool = true) -> void:
+	canvas.draw_rect(rect,face)
+	var light := face.lightened(0.35)
+	var dark := face.darkened(0.55)
+	if not raised:
+		var swap := light
+		light=dark
+		dark=swap
+	canvas.draw_colored_polygon(PackedVector2Array([rect.position,rect.position+Vector2(rect.size.x,0),rect.position+Vector2(rect.size.x-thickness,thickness),rect.position+Vector2(thickness,thickness),rect.position+Vector2(thickness,rect.size.y-thickness),rect.position+Vector2(0,rect.size.y)]),light)
+	canvas.draw_colored_polygon(PackedVector2Array([rect.end,rect.position+Vector2(0,rect.size.y),rect.position+Vector2(thickness,rect.size.y-thickness),rect.end-Vector2(thickness,thickness),rect.position+Vector2(rect.size.x-thickness,thickness),rect.position+Vector2(rect.size.x,0)]),dark)
+
+static func digits(canvas: CanvasItem, text_value: String, origin: Vector2, scale_value: float, color: Color) -> void:
+	var masks := [63,6,91,79,102,109,125,7,127,111]
+	var segments := [[Vector2(2,0),Vector2(9,0)],[Vector2(10,1),Vector2(10,8)],[Vector2(10,11),Vector2(10,18)],[Vector2(2,20),Vector2(9,20)],[Vector2(0,11),Vector2(0,18)],[Vector2(0,1),Vector2(0,8)],[Vector2(2,10),Vector2(9,10)]]
+	for k in range(text_value.length()):
+		var digit := int(text_value[k])
+		for j in range(7):
+			var c := color if int(masks[digit]) & (1<<j) else Color(color,0.07)
+			canvas.draw_line(origin+Vector2(k*15,0)*scale_value+segments[j][0]*scale_value,origin+Vector2(k*15,0)*scale_value+segments[j][1]*scale_value,c,2*scale_value,true)
