@@ -234,10 +234,11 @@ static func validate(data: Dictionary) -> bool:
 			if not (value is int or value is float) or value < 0 or value > upper or value != int(value):
 				return false
 	if data.generated:
-		if data.mines.count(1.0) + data.mines.count(1) != int(data.mine_count):
-			# Godot treats integer and float values as equal in Array.count.
-			if data.mines.count(1) != int(data.mine_count):
-				return false
+		var counted_mines := 0
+		for value in data.mines:
+			counted_mines += int(value)
+		if counted_mines != int(data.mine_count):
+			return false
 		for i in range(w * h):
 			if int(data.cells[i]) == OPEN and int(data.mines[i]) == 1:
 				return false

@@ -14,6 +14,7 @@ parser.add_argument('--engine', required=True)
 parser.add_argument('--project', required=True)
 parser.add_argument('--log', required=True)
 parser.add_argument('--timeout', type=int, default=180)
+parser.add_argument('--scenario', choices=['visual','manual','release'], default='visual')
 args = parser.parse_args()
 
 class STARTUPINFO(c.Structure):
@@ -38,7 +39,10 @@ si = STARTUPINFO()
 si.cb = c.sizeof(si)
 si.lpDesktop = desktop_name
 pi = PROCESSINFO()
-command = [args.engine,'--path',args.project,'--audio-driver','Dummy','--resolution','1440x900','--fixed-fps','60','--log-file',args.log,'--','--visual-test','--test-data='+os.path.join(args.project,'test_runs','visual_data')]
+command = [args.engine]
+if args.scenario != 'release':
+    command += ['--path',args.project]
+command += ['--audio-driver','Dummy','--resolution','1440x900','--fixed-fps','60','--log-file',args.log,'--','--'+args.scenario+'-test','--test-data='+os.path.join(args.project,'test_runs',args.scenario+'_data')]
 try:
     if not kernel.CreateProcessW(None, c.create_unicode_buffer(subprocess.list2cmdline(command)), None, None, False, 0x08000000, None, args.project, c.byref(si), c.byref(pi)):
         raise c.WinError(c.get_last_error())

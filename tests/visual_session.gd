@@ -92,6 +92,18 @@ func run(root_app: Control) -> void:
 	app.show_guide()
 	await shot("06_guide")
 	app.close_modal()
+	# Focus must not trap board navigation after a workshop purchase.
+	await click(Vector2(1210,398))
+	check(app.session.has("lens"),"workshop purchase through UI")
+	await key(KEY_RIGHT)
+	check(app.board_view.keyboard_cell >= 0,"arrows reach board from button focus")
+	var selected: int = app.board_view.keyboard_cell
+	app.tool_buttons.probe.grab_focus()
+	await key(KEY_RIGHT)
+	check(app.board_view.keyboard_cell == selected+1,"arrows escape persistent tool focus")
+	await key(KEY_F)
+	await key(KEY_F)
+	await click(app.board_view.position+app.board_view.cell_position(27))
 	# Complete the opening with visible logical moves and guaranteed probes.
 	var safety := 0
 	while not app.session.finished and safety < 100:

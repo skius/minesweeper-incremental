@@ -36,7 +36,7 @@ const UPGRADES = [
 	{"id":"shield", "name":"Soft landing", "group":2, "cost":600, "cores":2, "rank":9, "pre":"", "icon":"shield", "desc":"The first mine hit per expedition keeps your chain and energy intact."},
 	{"id":"chord", "name":"Cascade circuit", "group":2, "cost":1100, "cores":3, "rank":16, "pre":"chain", "icon":"cross", "desc":"Chording safely triggers other satisfied clues in a continuous cascade."},
 	{"id":"bounty", "name":"Pocket refinery", "group":2, "cost":2100, "cores":3, "rank":26, "pre":"salvage", "icon":"prism", "desc":"Pockets produce 25 extra light. Every perfect clear awards an extra core."},
-	{"id":"capacitor", "name":"Induction loop", "group":2, "cost":3300, "cores":4, "rank":37, "pre":"battery", "icon":"battery", "desc":"Correct flags store energy. Passive energy returns twice as fast."},
+	{"id":"capacitor", "name":"Induction loop", "group":2, "cost":3300, "cores":4, "rank":37, "pre":"battery", "icon":"battery", "desc":"Drone-mapped charges restore energy. Passive energy returns twice as fast."},
 	{"id":"relay", "name":"Relay network", "group":2, "cost":5100, "cores":5, "rank":55, "pre":"chord", "icon":"line", "desc":"Start expeditions with two extra safe openings. Drone reveals pay full light."},
 	{"id":"aurora", "name":"Aurora protocol", "group":2, "cost":8400, "cores":6, "rank":73, "pre":"relay", "icon":"nova", "desc":"Clearing a field refills all energy. Pockets trigger free safe crossbeams."}
 ]

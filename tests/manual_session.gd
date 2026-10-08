@@ -1,0 +1,82 @@
+extends Node
+
+var app: Control
+var last_id: int = -1
+var busy: bool = false
+var clock: float = 0
+var path: String = "res://test_runs/manual/"
+var history: Array = []
+
+func run(root_app: Control) -> void:
+	app = root_app
+	DirAccess.make_dir_recursive_absolute(path)
+	app.session = null
+	app.show_menu()
+	await capture()
+
+func _process(delta: float) -> void:
+	clock += delta
+	if app == null or busy or clock < 0.15:
+		return
+	clock = 0
+	if not FileAccess.file_exists(path+"command.json"):
+		return
+	var parser := JSON.new()
+	if parser.parse(FileAccess.get_file_as_string(path+"command.json")) != OK:
+		return
+	var command = parser.data
+	if not command is Dictionary or int(command.get("id",-1)) <= last_id:
+		return
+	last_id = int(command.id)
+	busy = true
+	history.append(command)
+	match command.get("action",""):
+		"click":
+			var p := Vector2(command.get("x",0),command.get("y",0))
+			if command.has("cell") and app.board_view != null:
+				p = app.board_view.position+app.board_view.cell_position(int(command.cell))
+			var motion := InputEventMouseMotion.new()
+			motion.position = p
+			get_viewport().push_input(motion,true)
+			var event := InputEventMouseButton.new()
+			event.position = p
+			event.button_index = MOUSE_BUTTON_RIGHT if command.get("right",false) else MOUSE_BUTTON_LEFT
+			event.pressed = true
+			get_viewport().push_input(event,true)
+			event = event.duplicate()
+			event.pressed = false
+			get_viewport().push_input(event,true)
+		"key":
+			var event := InputEventKey.new()
+			event.keycode = int(command.code)
+			event.pressed = true
+			get_viewport().push_input(event,true)
+			event = event.duplicate()
+			event.pressed = false
+			get_viewport().push_input(event,true)
+		"resize":
+			DisplayServer.window_set_size(Vector2i(command.width,command.height))
+		"quit":
+			var file := FileAccess.open(path+"history.json",FileAccess.WRITE)
+			file.store_string(JSON.stringify(history,"  "))
+			file.close()
+			print("AFTERLIGHT PASS: visual decision playtest, %d actions" % history.size())
+			app.quit_game()
+			return
+	await capture()
+	busy = false
+
+func capture() -> void:
+	for _i in range(45):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png(path+"latest.png")
+	var visible := {"id":last_id,"screen":app.screen,"modal":app.modal_kind,"tool":app.selected_tool}
+	if app.session != null:
+		var s: GameSession = app.session
+		visible.merge({"index":s.index,"credits":s.credits,"cores":s.cores,"energy":s.energy,"strikes":s.strikes,"finished":s.finished,"upgrades":s.upgrades,"width":s.board.width,"height":s.board.height,"cells":[]})
+		for i in range(s.board.cells.size()):
+			visible.cells.append(str(s.board.clues[i]) if s.board.cells[i]==MineBoard.OPEN else ("F" if s.board.cells[i]==MineBoard.FLAG else ("X" if s.board.cells[i]==MineBoard.HIT else "?")))
+	var file := FileAccess.open(path+"visible.json",FileAccess.WRITE)
+	file.store_string(JSON.stringify(visible,"  "))
+	file.close()

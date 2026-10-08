@@ -9,6 +9,7 @@ var tones: Dictionary = {}
 var cursor: int = 0
 var last_reveal: float = -1
 var time: float = 0
+var current_region: int = -1
 
 func _ready() -> void:
 	for i in range(12):
@@ -19,8 +20,18 @@ func _ready() -> void:
 		tones[key] = synth(key)
 	music_player = AudioStreamPlayer.new()
 	add_child(music_player)
-	music_player.stream = ambient()
 	music_player.volume_db = linear_to_db(maxf(0.0001,music_volume))
+	set_region(0)
+
+func set_region(region: int) -> void:
+	if region == current_region or music_player == null:
+		return
+	current_region = region
+	var filename := "res://assets/audio/region_%d.wav" % region
+	var stream: AudioStreamWAV = load(filename) if ResourceLoader.exists(filename) else ambient(region)
+	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	stream.loop_end = roundi(stream.get_length()*stream.mix_rate)
+	music_player.stream = stream
 	music_player.play()
 
 func _process(delta: float) -> void:
@@ -73,14 +84,17 @@ func synth(kind: String) -> AudioStreamWAV:
 	stream.data = bytes
 	return stream
 
-func ambient() -> AudioStreamWAV:
+func ambient(region: int = 0) -> AudioStreamWAV:
 	# Original 32-second ambient loop; whole-cycle oscillators and edge fades
 	# avoid discontinuities. A restrained harmonic bed leaves clue sounds clear.
 	var rate := 22050
 	var seconds := 32.0
 	var bytes := PackedByteArray()
 	bytes.resize(int(rate*seconds)*2)
-	var notes := [130.8128,164.8138,195.9977,246.9417,261.6256,329.6276]
+	var roots := [130.8128,146.8324,110.0,123.4708,138.5913,130.8128]
+	var root_hz: float = roots[region]
+	var notes := [root_hz,root_hz*1.25,root_hz*1.5,root_hz*1.8877,root_hz*2,root_hz*2.52]
+	var phrases := [[0,4,2,7,4,0,-1,-5],[7,9,4,2,7,4,0,2],[0,7,4,9,7,4,2,-3],[-5,0,2,7,4,2,0,-1],[0,2,3,7,10,7,3,2],[0,4,7,12,11,7,9,4]]
 	for i in range(bytes.size()/2):
 		var t := float(i)/rate
 		var value := 0.0
@@ -90,8 +104,12 @@ func ambient() -> AudioStreamWAV:
 			value += sin(TAU*freq*t)*0.020*breath
 		var beat := int(t/2)%8
 		var nt := fmod(t,2.0)
-		var melody: float = [523.25,659.25,587.33,783.99,659.25,523.25,493.88,392.0][beat]
-		value += sin(TAU*melody*nt)*0.028*minf(1,nt*15)*exp(-nt*2.2)
+		var melody: float = root_hz*4*pow(2,float(phrases[region][beat])/12)
+		var instrument := sin(TAU*melody*nt) + 0.14*sin(TAU*melody*2.002*nt)
+		value += instrument*0.027*minf(1,nt*15)*exp(-nt*(2.2 if region != 4 else 1.7))
+		if region in [1,3,5]:
+			var offbeat := fmod(t+0.5,1.0)
+			value += sin(TAU*melody*0.5*offbeat)*0.008*minf(1,offbeat*40)*exp(-offbeat*7)
 		var fade := minf(1,minf(t,seconds-t)/0.7)
 		bytes.encode_s16(i*2,int(clampf(value*fade,-1,1)*32767))
 	var stream := AudioStreamWAV.new()

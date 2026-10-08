@@ -30,7 +30,7 @@ var report_image: Image
 
 func _ready() -> void:
 	get_tree().auto_accept_quit = false
-	visual_test = OS.get_cmdline_user_args().has("--visual-test")
+	visual_test = OS.get_cmdline_user_args().has("--visual-test") or OS.get_cmdline_user_args().has("--manual-test") or OS.get_cmdline_user_args().has("--release-test")
 	settings = store.load_settings()
 	font_bold = FontVariation.new()
 	font_bold.base_font = ThemeDB.fallback_font
@@ -59,8 +59,10 @@ func _ready() -> void:
 	show_menu()
 	if store.notice != "":
 		toast(store.notice,7)
-	if visual_test:
-		var runner = load("res://tests/visual_session.gd").new()
+	if OS.get_cmdline_user_args().has("--release-test"):
+		call_deferred("release_smoke")
+	elif visual_test:
+		var runner = load("res://tests/manual_session.gd" if OS.get_cmdline_user_args().has("--manual-test") else "res://tests/visual_session.gd").new()
 		add_child(runner)
 		runner.call_deferred("run",self)
 
@@ -218,6 +220,8 @@ func show_menu() -> void:
 	label_at(ui,"v%s  ·  Made for unhurried discovery" % Content.VERSION,Rect2(74,854,590,22),12,Palette.MUTED.darkened(0.15))
 	if OS.has_feature("web"):
 		label_at(ui,"Saves live in this browser",Rect2(1110,854,260,22),12,Palette.MUTED)
+	else:
+		button(ui,"Quit",Rect2(1283,834,97,39),quit_game)
 
 func new_game() -> void:
 	session = GameSession.new()
@@ -243,6 +247,7 @@ func start_play() -> void:
 	screen = "play"
 	scenery.menu = false
 	scenery.region = session.region()
+	audio.set_region(session.region())
 	selected_tool = ""
 	build_header()
 	build_atlas()
@@ -299,13 +304,8 @@ func build_field() -> void:
 	hud.field_info = label_at(ui,"FIELD %02d / 16   ·   %s" % [session.index%16+1,Content.title_for(session.index)],Rect2(284,213,750,25),14,Palette.MUTED)
 	hud.energy_label = label_at(ui,"",Rect2(846,177,202,30),13,Palette.MINT)
 	hud.energy_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	var energy_bar := ProgressBar.new()
-	energy_bar.position = Vector2(881,218)
-	energy_bar.show_percentage = false
-	energy_bar.add_theme_stylebox_override("background",Palette.box(Palette.EDGE,3))
-	energy_bar.add_theme_stylebox_override("fill",Palette.box(accent,3))
-	energy_bar.size = Vector2(164,7)
-	ui.add_child(energy_bar)
+	panel(ui,Rect2(881,222,164,5),Palette.EDGE,2,Color.TRANSPARENT)
+	var energy_bar := panel(ui,Rect2(881,222,164,5),accent,2,Color.TRANSPARENT)
 	hud.energy_bar = energy_bar
 	board_view = BoardView.new()
 	board_view.position = Vector2(280,257)
@@ -404,8 +404,7 @@ func update_hud() -> void:
 	hud.light.text = format_number(session.credits)
 	hud.cores.text = str(session.cores)
 	hud.energy_label.text = "ENERGY  %d / %d" % [int(session.energy),int(session.capacity())]
-	hud.energy_bar.max_value = session.capacity()
-	hud.energy_bar.value = session.energy
+	hud.energy_bar.size.x = maxf(1,164*session.energy/session.capacity())
 	var b := session.board
 	hud.progress.text = "%d / %d surveyed" % [b.open_count(),b.width*b.height-b.mine_count]
 	hud.chain.text = "CHAIN ×%d  ·  %d" % [session.multiplier(),session.chain] if session.has("chain") else "%d charges  ·  %d flags" % [b.mine_count,b.cells.count(MineBoard.FLAG)]
@@ -463,6 +462,7 @@ func update_shop() -> void:
 func on_cell(i: int, right: bool) -> void:
 	if modal_kind != "" or session.finished:
 		return
+	get_viewport().gui_release_focus()
 	if right or (settings.flag_mode and selected_tool == ""):
 		session.flag(i)
 	elif selected_tool != "":
@@ -872,7 +872,7 @@ func capture_report() -> void:
 		toast("Report saved to "+ProjectSettings.globalize_path(folder),8)
 	,true)
 
-func _unhandled_key_input(event: InputEvent) -> void:
+func _input(event: InputEvent) -> void:
 	if not event is InputEventKey or not event.pressed or event.echo:
 		return
 	if event.keycode == KEY_F11:
@@ -892,6 +892,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			update_hud()
 		elif screen == "play":
 			show_pause()
+		get_viewport().set_input_as_handled()
 		return
 	if modal_kind != "":
 		return
@@ -899,6 +900,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		show_guide()
 		return
 	if screen != "play":
+		return
+	# Tab/Enter still operate native menus. Arrow keys explicitly return to
+	# the field, even when a tool button currently owns keyboard focus.
+	if event.keycode in [KEY_SPACE,KEY_ENTER] and get_viewport().gui_get_focus_owner() is Button:
 		return
 	if session.finished:
 		if event.keycode == KEY_ENTER or event.keycode == KEY_SPACE:
@@ -936,6 +941,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	elif event.keycode == KEY_5 and session.has("overdrive"):
 		session.use_tool("overdrive")
 		after_action()
+	if event.keycode in [KEY_LEFT,KEY_RIGHT,KEY_UP,KEY_DOWN,KEY_SPACE,KEY_ENTER,KEY_F,KEY_1,KEY_2,KEY_3,KEY_4,KEY_5]:
+		get_viewport().set_input_as_handled()
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
@@ -955,3 +962,49 @@ func format_number(value: int) -> String:
 	if value < 10000:
 		return str(value)
 	return "%.1fk" % (float(value)/1000)
+
+# The release smoke path is deliberately gated behind both an explicit command
+# argument and an isolated save directory. It tests the shipped PCK itself.
+func release_smoke() -> void:
+	if store.directory == "user://":
+		printerr("Release smoke requires an isolated --test-data path")
+		get_tree().quit(1)
+		return
+	session = null
+	show_menu()
+	await smoke_capture("release-menu")
+	await smoke_click(Vector2(260,500))
+	var ok := screen == "play" and session != null
+	if not ok:
+		printerr("Release menu did not start game")
+		get_tree().quit(1)
+		return
+	await smoke_click(board_view.position+board_view.cell_position(27))
+	ok = ok and session.board.generated and session.strikes == 0
+	await smoke_capture("release-field")
+	save_game()
+	var loaded := store.load_session()
+	ok = ok and loaded != null and loaded.board.cells == session.board.cells
+	show_settings()
+	await smoke_capture("release-settings")
+	show_licenses()
+	await smoke_capture("release-licences")
+	print("AFTERLIGHT %s: exported build boots, renders, accepts input and reloads saves; editor=%s" % ["PASS" if ok else "FAIL",str(OS.has_feature("editor"))])
+	get_tree().quit(0 if ok else 1)
+
+func smoke_capture(filename: String) -> void:
+	for _i in range(30):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png(store.path(filename+".png"))
+
+func smoke_click(p: Vector2) -> void:
+	var event := InputEventMouseButton.new()
+	event.position = p
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.pressed = true
+	get_viewport().push_input(event,true)
+	event = event.duplicate()
+	event.pressed = false
+	get_viewport().push_input(event,true)
+	await get_tree().process_frame

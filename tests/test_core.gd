@@ -88,6 +88,51 @@ func run() -> void:
 	data.board.clues[0] = 99
 	check(GameSession.from_dict(data) == null, "invalid save rejected")
 	check(not s.begin_trial(0), "trials locked early")
+	# Targeted rule fixtures supplement the generated solver corpus.
+	var fixture := GameSession.new()
+	fixture.index = 60
+	fixture.upgrades.assign(["cross","line","nova","drone","flagger","logic","oracle","capacitor","battery"])
+	fixture.start_board()
+	fixture.reveal(90)
+	var tool_strikes := fixture.strikes
+	for tool in ["cross","line","nova"]:
+		fixture.energy = fixture.capacity()
+		fixture.use_tool(tool,0)
+		check(fixture.strikes == tool_strikes,"%s cannot hit mines" % tool)
+	fixture.trial = 2
+	fixture.start_board()
+	fixture.reveal(30)
+	fixture.energy = fixture.capacity()
+	var opened := fixture.board.open_count()
+	check(not fixture.use_tool("cross",0),"survey trials reject advanced tools")
+	fixture.tick(30)
+	check(fixture.board.open_count() == opened,"survey trials park drones")
+	check(fixture.use_tool("probe"),"survey trials retain guaranteed probe")
+	fixture.trial = -1
+	fixture.index = 95
+	fixture.start_board()
+	while not fixture.finished:
+		fixture.probe_one("tool")
+	check(fixture.last_reward.region_end,"last relay has ending")
+	var finish_restore := GameSession.from_dict(fixture.to_dict())
+	check(finish_restore != null and finish_restore.finished,"completed debrief survives restart")
+	fixture.next_board()
+	check(fixture.completed_campaign and fixture.index == 96,"endless begins after final relay")
+	check(fixture.begin_trial(0),"mastery accessible from fresh endless board")
+	while not fixture.finished:
+		fixture.probe_one("tool")
+	fixture.next_board()
+	check(fixture.index == 96 and fixture.trial == -1 and not fixture.finished,"trial returns to same pending campaign field")
+	# Chording a deliberately wrong flag is allowed to strike: clues never lie.
+	var chord_board := MineBoard.new()
+	chord_board.setup(8,7,7,71093)
+	chord_board.reveal(27)
+	chord_board.toggle_flag(5) # visible clue 12 touches 5 and the actual charge 13.
+	var targets := chord_board.chord_targets(12)
+	check(targets.has(13),"wrong flag produces dangerous chord")
+	for n in targets:
+		chord_board.reveal(n)
+	check(chord_board.cells[13] == MineBoard.HIT,"chord respects actual mine position")
 	var count := 0
 	for item in Content.UPGRADES:
 		check(Content.upgrade(item.id).id == item.id, "content ID")
