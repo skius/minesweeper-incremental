@@ -27,12 +27,9 @@ func center_for(id: String) -> Vector2:
 func visible_node(item: Dictionary) -> bool:
 	if item.id == "lens" or session.has(item.id):
 		return true
-	if item.rank > session.index + 8:
+	if item.rank > session.index:
 		return false
-	if session.has(item.pre):
-		return true
-	var parent := Content.upgrade(item.pre)
-	return not parent.is_empty() and session.has(parent.pre)
+	return session.has(item.pre)
 
 func node_at(p: Vector2) -> String:
 	for item in Content.UPGRADES:

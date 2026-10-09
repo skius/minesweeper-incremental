@@ -63,6 +63,8 @@ func _ready() -> void:
 	apply_settings()
 	session = store.load_session()
 	show_menu()
+	resized.connect(layout_ui)
+	layout_ui()
 	if store.notice != "":
 		toast(store.notice,7)
 	if OS.get_cmdline_user_args().has("--release-test"):
@@ -112,6 +114,42 @@ func make_theme() -> void:
 	theme.set_stylebox("grabber_highlight","VScrollBar",Palette.box(Palette.MUTED,3))
 	theme.set_stylebox("slider","HSlider",Palette.box(Palette.EDGE,3))
 	theme.set_stylebox("grabber_area","HSlider",Palette.box(Palette.MINT,3))
+
+# Layout expands with the logical viewport. Store the authored rectangles once,
+# so repeated resizes never accumulate drift or recreate controls in use.
+func layout_ui() -> void:
+	if not is_instance_valid(ui):
+		return
+	var extra := size-Vector2(1440,900)
+	scenery.size=size
+	toast_layer.position=Vector2(extra.x/2,0)
+	for child in ui.get_children():
+		if not child is Control:
+			continue
+		if not child.has_meta("base_rect"):
+			child.set_meta("base_rect",Rect2(child.position,child.size))
+		var base: Rect2=child.get_meta("base_rect")
+		var shift := extra/2
+		if screen=="play":
+			if base.position.x<180:
+				shift.x=0
+			elif base.position.x>=1230:
+				shift.x=extra.x
+			if base.position.y<110:
+				shift.y=0
+			elif base.position.y>=760:
+				shift.y=extra.y
+			if child==board_view and session.index>=3:
+				shift=Vector2.ZERO
+				child.size=base.size+extra
+		child.position=base.position+shift
+	if is_instance_valid(board_view) and hud.has("flag_mode"):
+		hud.flag_mode.position=Vector2(board_view.size.x-73,48)
+	for child in modal.get_children():
+		if child is ColorRect:
+			child.size=size
+		elif child is Panel:
+			child.position=(size-child.size)/2
 
 func wipe(parent: Node) -> void:
 	for child in parent.get_children():
@@ -236,6 +274,7 @@ func show_menu() -> void:
 	label_at(window,"v%s  /  %s" % [Content.VERSION,"EXPEDITION %03d" % (session.index+1) if session else "READY WHEN YOU ARE"],Rect2(43,507,525,28),12,Palette.MUTED)
 	if not OS.has_feature("web"):
 		button(ui,"Exit",Rect2(1265,810,113,42),quit_game)
+	layout_ui()
 
 func new_game() -> void:
 	session = GameSession.new()
@@ -268,6 +307,7 @@ func start_play() -> void:
 	build_header()
 	build_field()
 	build_tools()
+	layout_ui()
 	update_hud()
 	if session.finished:
 		finish_delay = 0.5
@@ -305,6 +345,8 @@ func build_field() -> void:
 	board_view.cell_pressed.connect(on_cell)
 	board_view.cell_hovered.connect(on_hover)
 	ui.add_child(board_view)
+	if ui_stage>=1:
+		hud.flag_mode=symbol_button(board_view,"flag",Rect2(rect.size.x-73,48,44,34),toggle_flag_mode,"Flag mode · left click places flags · F")
 	var accent := Color(Content.REGIONS[session.region()].color)
 	var field_label := label_at(ui,"",Rect2(66,388,93,64),30,accent,true)
 	field_label.tooltip_text = "Current site"
@@ -405,6 +447,12 @@ func update_hud() -> void:
 		hud.light.text = format_number(session.credits)
 	if hud.has("cores"):
 		hud.cores.text = str(session.cores)
+	if hud.has("flag_mode"):
+		hud.flag_mode.add_theme_stylebox_override("normal",Palette.surface(Palette.MINT if settings.flag_mode else Palette.PANEL_LIGHT,not settings.flag_mode))
+		var flag_glyph := hud.flag_mode.get_child(0) as Glyph
+		flag_glyph.color=Palette.INK if settings.flag_mode else Palette.WHITE
+		flag_glyph.queue_redraw()
+		hud.flag_mode.tooltip_text="Flag mode on · click to return to revealing" if settings.flag_mode else "Flag mode · left click places flags · F"
 	if hud.has("energy_bar"):
 		hud.energy_bar.size.x = maxf(1,330*session.energy/session.capacity())
 		hud.energy_bar.tooltip_text = "%d / %d energy" % [session.energy,session.capacity()]
@@ -516,7 +564,7 @@ func on_cell(i: int, right: bool, keyboard_reveal: bool = false) -> void:
 	if modal_kind != "" or session.finished:
 		return
 	get_viewport().gui_release_focus()
-	if right or (settings.flag_mode and selected_tool == "" and not keyboard_reveal):
+	if right or (settings.flag_mode and session.board.generated and selected_tool == "" and not keyboard_reveal):
 		session.flag(i)
 	elif selected_tool != "":
 		if session.use_tool(selected_tool,i):
@@ -566,6 +614,12 @@ func toggle_drones() -> void:
 	update_hud()
 	mark_save()
 
+func toggle_flag_mode() -> void:
+	settings.flag_mode=not settings.flag_mode
+	selected_tool=""
+	store.write_settings(settings)
+	update_hud()
+
 func after_action() -> void:
 	consume_events()
 	if screen=="play" and ui_stage != disclosure_stage():
@@ -583,7 +637,7 @@ func consume_events() -> void:
 				if event.amount > 0:
 					var p := board_view.position+board_view.cell_position(event.cells[0])
 					effects.popup(p,"+%d" % event.amount,Palette.MINT)
-					effects.burst(p,Palette.MINT,mini(event.cells.size()*2+3,18),Vector2(652,54) if hud.has("light") else Vector2(-1,-1))
+					effects.burst(p,Palette.MINT,mini(event.cells.size()*2+3,18),hud.light.position+Vector2(-24,19) if hud.has("light") else Vector2(-1,-1))
 					audio.play("reveal",pow(2,float(mini(event.chain,16)%5)/12))
 			"excavate":
 				var p := board_view.position+board_view.cell_position(event.cell)
@@ -700,10 +754,10 @@ func dialog(title: String, dimensions: Vector2, kind: String) -> Panel:
 	modal_kind = kind
 	var dim := ColorRect.new()
 	dim.color = Color(0.015,0.035,0.045,0.86)
-	dim.size = Vector2(1440,900)
+	dim.size = size
 	dim.mouse_filter = MOUSE_FILTER_STOP
 	modal.add_child(dim)
-	var p := panel(modal,Rect2((Vector2(1440,900)-dimensions)/2,dimensions),Palette.PANEL,5,Color("9aa5b7"))
+	var p := panel(modal,Rect2((size-dimensions)/2,dimensions),Palette.PANEL,5,Color("9aa5b7"))
 	panel(p,Rect2(5,5,dimensions.x-10,76),Color("526e9b"),0,Color("869dbc"))
 	p.mouse_filter = MOUSE_FILTER_STOP
 	label_at(p,title,Rect2(38,28,dimensions.x-125,50),30,Palette.WHITE,true)
@@ -1045,9 +1099,7 @@ func _input(event: InputEvent) -> void:
 		if board_view.keyboard_cell >= 0:
 			on_cell(board_view.keyboard_cell,true)
 		else:
-			settings.flag_mode = not settings.flag_mode
-			store.write_settings(settings)
-			update_hud()
+			toggle_flag_mode()
 	elif event.keycode in [KEY_2,KEY_3,KEY_4]:
 		select_tool({KEY_2:"cross",KEY_3:"line",KEY_4:"nova"}[event.keycode])
 	elif event.keycode == KEY_5 and session.has("overdrive"):

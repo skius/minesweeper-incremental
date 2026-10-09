@@ -29,24 +29,24 @@ func _draw() -> void:
 	# Procedural desktop wallpaper: evening bands, distant hills, sparse pixels.
 	draw_texture_rect(sky_texture,Rect2(Vector2.ZERO,size),false)
 	for layer in range(4):
-		var poly := PackedVector2Array([Vector2(0,900)])
-		for x in range(0,1441,40):
-			var y := 690+layer*49+sin(x*0.004+layer*1.5)*90+sin(x*0.011+layer)*21
-			poly.append(Vector2(x,minf(y,876)))
-		poly.append(Vector2(1440,900))
+		var poly := PackedVector2Array([Vector2(0,size.y)])
+		for x in range(0,int(size.x)+40,40):
+			var y := size.y-210+layer*49+sin(x*0.004+layer*1.5)*90+sin(x*0.011+layer)*21
+			poly.append(Vector2(x,minf(y,size.y-24)))
+		poly.append(Vector2(size.x,size.y))
 		draw_colored_polygon(poly,Color("2c465a").darkened(layer*0.17))
 	for i in range(76):
-		var p := Vector2(fmod(i*317.7+17,1440),fmod(i*149.3+31,600))
+		var p := Vector2(fmod(i*317.7+17,size.x),fmod(i*149.3+31,size.y*0.67))
 		draw_rect(Rect2(p,Vector2(2,2)),Color(accent,0.09+0.06*sin(i+time*0.3)))
 	# Desktop rail, present as a quiet framing device rather than extra controls.
-	Palette.bevel(self,Rect2(0,883,1440,17),Color("536377"),1)
-	draw_rect(Rect2(6,888,7,7),accent)
-	draw_string(ThemeDB.fallback_font,Vector2(22,895),"AFTERLIGHT / FIELD OS",HORIZONTAL_ALIGNMENT_LEFT,-1,9,Palette.WHITE)
-	draw_string(ThemeDB.fallback_font,Vector2(1328,895),"LOCAL · OFFLINE",HORIZONTAL_ALIGNMENT_LEFT,-1,9,Palette.WHITE)
+	Palette.bevel(self,Rect2(0,size.y-17,size.x,17),Color("536377"),1)
+	draw_rect(Rect2(6,size.y-12,7,7),accent)
+	draw_string(ThemeDB.fallback_font,Vector2(22,size.y-5),"AFTERLIGHT / FIELD OS",HORIZONTAL_ALIGNMENT_LEFT,-1,9,Palette.WHITE)
+	draw_string(ThemeDB.fallback_font,Vector2(size.x-112,size.y-5),"LOCAL · OFFLINE",HORIZONTAL_ALIGNMENT_LEFT,-1,9,Palette.WHITE)
 	if not menu:
 		return
 	# Orbital cartography: hand-built vector artwork, slowly breathing in place.
-	var origin := Vector2(1030,453)
+	var origin := Vector2(1030,453)+(size-Vector2(1440,900))/2
 	for r in [160,222,279,336]:
 		draw_arc(origin,r,0,TAU,120,Color(accent,0.13),1,true)
 	draw_line(Vector2(687,446),Vector2(1390,446),Color(accent,0.16),1,true)
@@ -88,4 +88,4 @@ func _draw() -> void:
 		draw_circle(p,20,Palette.INK)
 		draw_arc(p,20,0,TAU,28,Color(accent,0.35),1,true)
 		Palette.icon(self,"drone",p,22,accent)
-	draw_string(ThemeDB.fallback_font,Vector2(821,754),"RESTORE.   RESEARCH.   REPEAT.",HORIZONTAL_ALIGNMENT_LEFT,-1,12,Palette.MUTED)
+	draw_string(ThemeDB.fallback_font,origin+Vector2(-209,301),"RESTORE.   RESEARCH.   REPEAT.",HORIZONTAL_ALIGNMENT_LEFT,-1,12,Palette.MUTED)

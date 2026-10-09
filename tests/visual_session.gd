@@ -79,6 +79,11 @@ func run(root_app: Control) -> void:
 	check(app.session.board.generated and app.session.strikes==0,"safe initial native opening")
 	check(app.tool_buttons.size()==1,"only Pulse appears after first reveal")
 	await shot("v2_03_opening")
+	check(app.hud.has("flag_mode"),"flag mode becomes discoverable after first opening")
+	await click(app.hud.flag_mode.global_position+app.hud.flag_mode.size/2)
+	check(app.settings.flag_mode,"native flag control enables flagging")
+	await click(app.hud.flag_mode.global_position+app.hud.flag_mode.size/2)
+	check(not app.settings.flag_mode,"native flag control returns to revealing")
 	var hovered_clue := -1
 	for i in range(app.session.board.cells.size()):
 		if app.session.board.cells[i]==MineBoard.OPEN and app.session.board.clues[i]>0:
@@ -109,6 +114,8 @@ func run(root_app: Control) -> void:
 	await shot("v2_05_first_tree")
 	check(app.upgrade_tree.visible_node(Content.upgrade("lens")),"tree begins at origin")
 	check(not app.upgrade_tree.visible_node(Content.upgrade("nova")),"distant future upgrades hidden")
+	for item in Content.UPGRADES:
+		check(not app.upgrade_tree.visible_node(item) if item.rank>app.session.index else true,"future field gates never appear: "+item.id)
 	await click(app.tree_detail.global_position+Vector2(150,542))
 	check(app.session.has("lens"),"connect origin using native button")
 	await shot("v2_06_first_branches")
@@ -206,6 +213,19 @@ func run(root_app: Control) -> void:
 	await shot("v2_19_small_field")
 	DisplayServer.window_set_size(Vector2i(1920,1080))
 	await shot("v2_20_wide_field")
+	check(is_equal_approx(app.size.x/app.size.y,1920.0/1080.0),"16:9 viewport expands without letterboxing")
+	check(app.scenery.size==app.size,"wallpaper fills the viewport")
+	check(app.board_view.size.x>1084,"field uses the wider viewport")
+	app.show_settings()
+	await shot("v3_29_wide_settings")
+	var dialog_panel: Control=app.modal.get_child(1)
+	check(dialog_panel.position.is_equal_approx((app.size-dialog_panel.size)/2),"resized modal remains centred")
+	app.close_modal()
+	DisplayServer.window_set_size(Vector2i(1600,720))
+	await shot("v3_30_ultrawide_field")
+	check(is_equal_approx(app.size.x/app.size.y,1600.0/720.0),"ultrawide expands without letterboxing")
+	DisplayServer.window_set_size(Vector2i(1920,1080))
+	await frames(4)
 	var samples: Array[float]=[]
 	for frame in range(180):
 		var begin:=Time.get_ticks_usec()
