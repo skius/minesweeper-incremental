@@ -4,6 +4,16 @@ extends RefCounted
 const VERSION = "1.2.0"
 const REGION_LENGTH = 16
 const CAMPAIGN_LENGTH = 96
+# Width, height, density, plating, terrain. Each optional pair offers a compact
+# manual survey and a broader fleet field, scaled to its restored region.
+const TRIAL_FIELDS = [
+	[11,9,0.19,0,"legacy"], [11,9,0.205,0,"legacy"],
+	[10,16,0.24,2,"shaft"], [20,9,0.25,2,"shelf"],
+	[12,18,0.27,3,"shaft"], [17,17,0.28,3,"geode"],
+	[18,18,0.29,4,"geode"], [24,14,0.30,4,"shelf"],
+	[14,18,0.32,5,"shaft"], [26,16,0.33,5,"shelf"],
+	[18,18,0.35,6,"geode"], [26,18,0.36,6,"shelf"]
+]
 const REGIONS = [
 	{"name":"The Shallows", "tag":"A SMALL BEGINNING", "color":"78dfbd", "rule":"Rich soil", "effect":"Every reveal collects light. Clear safe ground to restore the relay.", "story":"There is still a light on the shore.\nSomeone left it burning for us.", "end":"The first relay answers. Beneath the static, you hear the sea. There are five more signals beyond the horizon."},
 	{"name":"Glass Tides", "tag":"THE SEA REMEMBERS", "color":"83c9ed", "rule":"Crystal pockets", "effect":"Buried crystals award triple light. The prism upgrade makes them echo.", "story":"These waves have stood still for a century.\nLet's give them somewhere to go.", "end":"The glass breaks into water. Your little machines discover the delight of getting their feet wet."},
@@ -88,14 +98,18 @@ static func contract(index: int, trial: int = -1, stratum: int = 0) -> Dictionar
 	var height: int = [8,10,12,13,14,16][region] + (1 if step >= 8 and region < 4 else 0)
 	var density := 0.16 + region * 0.024 + (step % 4) * 0.008 + minf(stratum * 0.002,0.015)
 	var form := "legacy"
+	var crust := 0 if index<6 else mini(6,maxi(2,1+region+stratum/4))
 	if index < 3:
 		width = 6 + index
 		height = 5 + index
 		density = 0.13 + index * 0.015
 	if trial >= 0:
-		width = 11 + trial / 3
-		height = 9 + trial / 4
-		density = 0.19 + (trial % 3) * 0.015
+		var field: Array=TRIAL_FIELDS[trial]
+		width=field[0]
+		height=field[1]
+		density=field[2]
+		crust=field[3]
+		form=field[4]
 	elif index >= 6:
 		# Shape and terrain change how a toolkit is used, rather than adding
 		# another copy of the same rectangle. Adjacent strata always differ.
@@ -111,7 +125,7 @@ static func contract(index: int, trial: int = -1, stratum: int = 0) -> Dictionar
 				width = mini(18, [9,12,14,16,17,18][region] + step / 8)
 				height = width
 	var board_seed := 350003+trial*11003 if trial>=0 else 71093+index*7919+stratum*104729
-	return {"width":width,"height":height,"mines":int(width * height * density),"seed":board_seed,"region":region,"step":step,"trial":trial,"finale":step == 15 and trial<0,"crust":0 if index<6 or trial>=0 else mini(6,maxi(2,1+region+stratum/4)),"form":form}
+	return {"width":width,"height":height,"mines":int(width * height * density),"seed":board_seed,"region":region,"step":step,"trial":trial,"finale":step == 15 and trial<0,"crust":crust,"form":form}
 
 static func upgrade(id: String) -> Dictionary:
 	for item in UPGRADES:

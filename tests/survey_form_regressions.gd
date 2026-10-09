@@ -49,7 +49,17 @@ static func _check_contracts(check: Callable) -> void:
 	for trial in range(12):
 		var a := Content.contract(96, trial)
 		var b := Content.contract(120, trial)
-		check.call(a.form == "legacy" and a.seed == b.seed and a.width == b.width and a.height == b.height, "fixed trials retain their exact geometry/generator")
+		check.call(a.form == b.form and a.seed == b.seed and a.width == b.width and a.height == b.height and a.crust == b.crust, "trial geometry/generator stay independent of campaign progress")
+		check.call(a.width<=26 and a.height<=18 and a.crust<=6, "trial terrain stays within readable bounds")
+		var old := GameSession.new()
+		old.index=96
+		old.trial=trial
+		old.board.setup(11+trial/3,9+trial/4,20,350003+trial*11003)
+		var saved := GameSession.from_dict(old.to_dict())
+		check.call(saved!=null and saved.board.width==old.board.width and saved.board.survey_form=="legacy", "unopened old trial save retains original layout")
+		old.reveal(old.board.width*(old.board.height/2)+old.board.width/2)
+		saved=GameSession.from_dict(old.to_dict())
+		check.call(saved!=null and saved.board.to_dict()==old.board.to_dict(), "mid-trial old save retains exact field")
 
 static func _check_terrain(check: Callable) -> void:
 	for seed_value in range(1, 41):

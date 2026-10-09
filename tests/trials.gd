@@ -17,8 +17,10 @@ func run() -> void:
 		var steps := 0
 		while not s.finished and steps<2000:
 			steps+=1
-			s.tick(1)
-			preload("res://tests/player_policy.gd").act(s)
+			for _substep in range(5):
+				s.tick(0.2)
+			if not s.finished:
+				preload("res://tests/player_policy.gd").act(s)
 			s.events.clear()
 		if not s.finished or s.strikes>0:
 			failures.append("Trial stalled or struck a charge: %d" % trial)

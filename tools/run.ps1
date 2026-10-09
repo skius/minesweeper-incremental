@@ -9,7 +9,8 @@ if (-not $enginePath -and (Test-Path (Join-Path $projectRoot '.env.local'))) {
 if (-not $enginePath -or -not (Test-Path -LiteralPath $enginePath)) { throw 'Set GODOT_EXE to the Godot executable, or set it in .env.local.' }
 $runRoot = Join-Path $projectRoot 'test_runs'
 New-Item -ItemType Directory -Force -Path $runRoot | Out-Null
-Set-Content -LiteralPath (Join-Path $runRoot '.gdignore') -Value '' -NoNewline
+$ignoreHandle = [System.IO.File]::Open((Join-Path $runRoot '.gdignore'), [System.IO.FileMode]::OpenOrCreate, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::ReadWrite)
+$ignoreHandle.Dispose()
 $runLog = Join-Path $runRoot ($Mode + '.log')
 switch ($Mode) {
     'play' { Start-Process -FilePath $enginePath -ArgumentList @('--path', ('"'+$projectRoot+'"')) -WindowStyle Normal; exit 0 }

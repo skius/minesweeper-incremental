@@ -323,6 +323,13 @@ func run(root_app: Control) -> void:
 	app.start_play()
 	check(app.tool_buttons.keys()==["probe"] and not app.hud.has("energy") and not app.hud.has("fleet_button"),"survey trial only exposes usable equipment")
 	await shot("v3_34_survey_trial")
+	configure(96)
+	check(app.session.begin_trial(11),"final fleet trial opens from completed campaign")
+	app.start_play()
+	app.session.drones_enabled=false
+	await click(app.board_view.global_position+app.board_view.cell_position(247))
+	check(app.session.board.width==26 and app.session.board.height==18 and app.session.board.crust==6,"final trial provides campaign-sized plated work")
+	await shot("v3_35_final_trial")
 	configure(95)
 	app.session.stratum=Content.strata_for(95)-1
 	while not app.session.finished:
