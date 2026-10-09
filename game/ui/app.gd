@@ -12,6 +12,8 @@ var toast_layer: Control
 var board_view: BoardView
 var screen: String = "menu"
 var modal_kind: String = ""
+var modal_history: Array[String] = []
+var modal_return_focus: Control
 var selected_tool: String = ""
 var shop_group: int = 0
 var shop_buttons: Dictionary = {}
@@ -84,6 +86,17 @@ func make_theme() -> void:
 	theme.set_stylebox("pressed","Button",Palette.surface(Palette.MINT,false))
 	theme.set_stylebox("focus","Button",Palette.box(Color.TRANSPARENT,0,Palette.GOLD,1))
 	theme.set_stylebox("disabled","Button",Palette.surface(Palette.PANEL,false))
+	for state in ["normal","pressed","disabled","hover_pressed"]:
+		theme.set_stylebox(state,"CheckBox",StyleBoxEmpty.new())
+	theme.set_stylebox("hover","CheckBox",Palette.box(Palette.PANEL_LIGHT,0))
+	theme.set_color("font_pressed_color","CheckBox",Palette.WHITE)
+	theme.set_color("font_hover_pressed_color","CheckBox",Palette.WHITE)
+	theme.set_icon("checked","CheckBox",Palette.control_texture("checked"))
+	theme.set_icon("unchecked","CheckBox",Palette.control_texture("unchecked"))
+	theme.set_constant("h_separation","CheckBox",14)
+	theme.set_icon("grabber","HSlider",Palette.control_texture("slider"))
+	theme.set_icon("grabber_highlight","HSlider",Palette.control_texture("slider"))
+	theme.set_stylebox("slider","HSlider",Palette.surface(Palette.INK,false))
 	var tooltip_style := Palette.box(Palette.PANEL_LIGHT,8,Palette.EDGE)
 	tooltip_style.content_margin_left = 12
 	tooltip_style.content_margin_right = 12
@@ -337,15 +350,15 @@ func build_tools() -> void:
 		return
 	var ids: Array[String] = ["probe"]
 	for id in ["cross","line","nova","overdrive"]:
-		if session.has(id):
+		if session.tool_available(id):
 			ids.append(id)
 	var width_value := ids.size()*83.0
 	for j in range(ids.size()):
 		var id: String = ids[j]
 		var b := button(ui,"",Rect2(720-width_value/2+j*83,789,70,65),func(): select_tool(id))
-		icon(b,"pulse" if id=="probe" else id,Rect2(16,14,38,38),Palette.MINT,29)
+		icon(b,tool_symbol(id),Rect2(16,14,38,38),Palette.MINT,29)
 		label_at(b,str({"probe":1,"cross":2,"line":3,"nova":4,"overdrive":5}[id]),Rect2(6,1,20,19),10,Palette.MUTED)
-		b.tooltip_text = ("Pulse · aim near the opening you want\nFree; recharges in 9 seconds" if session.has("focus") else "Pulse · guaranteed safe opening\nFree; recharges in 9 seconds") if id=="probe" else Content.upgrade(id).desc
+		b.tooltip_text = tool_help(id)
 		tool_buttons[id] = b
 		hud["charge_"+id] = label_at(b,"",Rect2(39,44,28,18),11,Palette.GOLD)
 	if session.layer_ready or session.finished:
@@ -353,6 +366,29 @@ func build_tools() -> void:
 			b.visible = false
 		var next_button := button(ui,"Descend ↓" if session.layer_ready else "Site restored →",Rect2(602,786,236,66),descend_or_complete,true)
 		hud.descend = next_button
+
+func tool_symbol(id: String) -> String:
+	match id:
+		"probe":
+			if session.has("prism"):
+				return "upgrade:pulse3_focus" if session.has("focus") else "upgrade:pulse3"
+			return "upgrade:pulse2_focus" if session.has("focus") else ("upgrade:probe2" if session.has("probe2") else "pulse")
+		"cross":
+			return "upgrade:diagonal" if session.has("diagonal") else "upgrade:cross"
+		"line":
+			return "upgrade:vertical" if session.has("vertical") else "upgrade:line"
+		"nova":
+			return "upgrade:aftershock" if session.has("aftershock") else "upgrade:nova"
+	return "upgrade:"+id
+
+func tool_help(id: String) -> String:
+	if id=="probe":
+		var count := 3 if session.has("prism") else (2 if session.has("probe2") else 1)
+		return "Pulse · %d safe opening%s\n%s · 9s recharge" % [count,"s" if count>1 else "","Aim near your cursor" if session.has("focus") else "Free"]
+	var symbol := tool_symbol(id).trim_prefix("upgrade:")
+	var name_value: String=Content.upgrade(symbol).name
+	var shape: String={"cross":"8 arms" if session.has("diagonal") else "Cross","line":"Row + column" if session.has("vertical") else "Full row","nova":"7 × 7" if session.has("aftershock") else "5 × 5","overdrive":"10× fleet · 12s"}.get(id,"")
+	return "%s · %s\n%d energy" % [name_value,shape,session.tool_cost(id)]
 
 func descend_or_complete() -> void:
 	if session.finished:
@@ -383,9 +419,15 @@ func update_hud() -> void:
 	hud.cue.tooltip_text = "Aim · Esc cancels" if selected_tool!="" else ("Flag · right mouse / F" if b.generated else "Reveal · left mouse / Enter")
 	for id in tool_buttons:
 		var btool: Button = tool_buttons[id]
-		btool.disabled = (session.probe_charge<1 if id=="probe" else session.energy<session.minimum_tool_cost(id)) or session.finished or session.layer_ready
+		var running: bool=id=="overdrive" and session.overdrive_seconds>0
+		btool.disabled = running or (session.probe_charge<1 if id=="probe" else session.energy<session.minimum_tool_cost(id)) or session.finished or session.layer_ready
 		var caption: Label = hud["charge_"+id]
 		caption.text = str(int(session.probe_charge)) if id=="probe" and session.has("reservoir") else ("%ds" % ceili((1-session.probe_charge)*9) if id=="probe" and session.probe_charge<1 else (str(int(session.tool_cost(id))) if id!="probe" else ""))
+		if running:
+			caption.text="%ds" % ceili(session.overdrive_seconds)
+		var tool_glyph := btool.get_child(0) as Glyph
+		tool_glyph.color=Palette.GOLD if running else Palette.MINT
+		tool_glyph.queue_redraw()
 		btool.add_theme_stylebox_override("normal",Palette.surface(Palette.MINT.darkened(0.55) if selected_tool==id else Palette.PANEL_LIGHT,selected_tool!=id))
 	if hud.has("fleet_title"):
 		hud.fleet_title.text = str(session.drone_count())
@@ -418,7 +460,7 @@ func show_tree() -> void:
 	upgrade_tree.selected.connect(tree_focus)
 	upgrade_tree.activate.connect(purchase_upgrade)
 	p.add_child(upgrade_tree)
-	label_at(p,"Make it yours.",Rect2(38,29,540,49),32,Palette.WHITE,true)
+	label_at(p,"Discoveries",Rect2(38,29,540,49),32,Palette.WHITE,true)
 	label_at(p,"%d / 50" % session.upgrades.size(),Rect2(984,36,120,32),17,Palette.MUTED)
 	icon(p,"prism",Rect2(1106,40,24,24),Palette.GOLD,19)
 	label_at(p,format_number(session.credits),Rect2(1135,36,93,32),18,Palette.WHITE)
@@ -453,7 +495,8 @@ func tree_focus(id: String) -> void:
 	preview.item = item
 	preview.motion = settings.motion
 	tree_detail.add_child(preview)
-	paragraph(tree_detail,item.name,Rect2(0,274,310,70),29,Palette.WHITE)
+	icon(tree_detail,"upgrade:"+id,Rect2(0,275,45,48),Palette.MINT,38)
+	paragraph(tree_detail,item.name,Rect2(60,274,250,80),26,Palette.WHITE)
 	paragraph(tree_detail,item.desc,Rect2(0,361,302,92),18,Palette.MUTED)
 	var reason := session.unlock_reason(item)
 	var owned := session.has(id)
@@ -488,6 +531,8 @@ func on_hover(i: int) -> void:
 	board_view.tooltip_text = ""
 
 func select_tool(id: String) -> void:
+	if modal_kind!="" or not session.tool_available(id):
+		return
 	if session.finished:
 		show_completion()
 		return
@@ -503,11 +548,13 @@ func select_tool(id: String) -> void:
 
 func purchase_upgrade(id: String) -> void:
 	if session.buy(id):
+		var old_history := modal_history.duplicate()
 		var old_pan := upgrade_tree.pan if is_instance_valid(upgrade_tree) else Vector2.ZERO
 		var old_zoom := upgrade_tree.zoom if is_instance_valid(upgrade_tree) else 0.76
 		consume_events()
 		start_play()
 		show_tree()
+		modal_history.assign(old_history)
 		upgrade_tree.pan = old_pan
 		upgrade_tree.zoom = old_zoom
 		upgrade_tree.burst_id = id
@@ -638,7 +685,16 @@ func toast(message: String, duration: float = 3.5) -> void:
 	paragraph(toast_layer,message,Rect2(410,113,620,35),16,Palette.WHITE)
 
 func dialog(title: String, dimensions: Vector2, kind: String) -> Panel:
+	var previous := modal_kind
+	var history := modal_history.duplicate()
+	var return_focus := modal_return_focus if previous!="" else get_viewport().gui_get_focus_owner()
 	close_modal()
+	modal_history.assign(history)
+	if previous!="" and previous!=kind:
+		modal_history.append(previous)
+	modal_return_focus=return_focus
+	set_background_focus(false)
+	get_viewport().gui_release_focus()
 	toast_time = 0
 	wipe(toast_layer)
 	modal_kind = kind
@@ -651,7 +707,8 @@ func dialog(title: String, dimensions: Vector2, kind: String) -> Panel:
 	panel(p,Rect2(5,5,dimensions.x-10,76),Color("526e9b"),0,Color("869dbc"))
 	p.mouse_filter = MOUSE_FILTER_STOP
 	label_at(p,title,Rect2(38,28,dimensions.x-125,50),30,Palette.WHITE,true)
-	symbol_button(p,"close",Rect2(dimensions.x-71,31,38,38),close_modal,"Close · Esc")
+	var close_button := symbol_button(p,"close",Rect2(dimensions.x-71,31,38,38),back_modal,"Back · Esc" if not modal_history.is_empty() else "Close · Esc")
+	close_button.grab_focus()
 	rule(p,Vector2(38,87),dimensions.x-76)
 	if board_view:
 		board_view.blocked = true
@@ -660,15 +717,40 @@ func dialog(title: String, dimensions: Vector2, kind: String) -> Panel:
 func close_modal() -> void:
 	wipe(modal)
 	modal_kind = ""
+	modal_history.clear()
+	set_background_focus(true)
+	if is_instance_valid(modal_return_focus) and modal_return_focus.is_inside_tree() and modal_return_focus.is_visible_in_tree():
+		modal_return_focus.grab_focus()
+	modal_return_focus=null
 	if board_view:
-		board_view.blocked = session.finished
+		board_view.blocked = session.finished or session.layer_ready
+
+func set_background_focus(enabled: bool) -> void:
+	for control in ui.find_children("*","Control",true,false):
+		if enabled and control.has_meta("modal_focus"):
+			control.focus_mode=int(control.get_meta("modal_focus"))
+			control.remove_meta("modal_focus")
+		elif not enabled and not control.has_meta("modal_focus"):
+			control.set_meta("modal_focus",control.focus_mode)
+			control.focus_mode=Control.FOCUS_NONE
+
+func back_modal() -> void:
+	var history := modal_history.duplicate()
+	close_modal()
+	while not history.is_empty():
+		var previous: String=history.pop_back()
+		var action: Callable={"pause":show_pause,"settings":show_settings,"guide":show_guide,"records":show_records,"credits":show_credits,"licenses":show_licenses,"complete":show_completion,"tree":show_tree}.get(previous,Callable())
+		if action.is_valid():
+			action.call()
+			modal_history.assign(history)
+			return
 
 func show_pause() -> void:
 	if screen != "play":
 		return
 	save_game()
-	var p := dialog("Take a breath.",Vector2(540,594),"pause")
-	label_at(p,"The world can wait. "+save_status+".",Rect2(38,106,468,36),16,Palette.MUTED)
+	var p := dialog("Paused",Vector2(540,594),"pause")
+	label_at(p,save_status,Rect2(38,106,468,36),16,Palette.MUTED)
 	var resume := button(p,"Resume expedition   →",Rect2(38,167,464,57),close_modal,true)
 	resume.grab_focus()
 	button(p,"Settings",Rect2(38,239,226,48),show_settings)
@@ -682,7 +764,7 @@ func show_pause() -> void:
 	label_at(p,"F10  Capture a local field report",Rect2(38,518,464,26),14,Palette.MUTED)
 
 func show_settings() -> void:
-	var p := dialog("Make yourself comfortable.",Vector2(690,706),"settings")
+	var p := dialog("Settings",Vector2(690,706),"settings")
 	var names := ["Music","Sound effects","Motion intensity"]
 	var keys := ["music","sfx","motion"]
 	for i in range(3):
@@ -694,6 +776,7 @@ func show_settings() -> void:
 		slider.max_value = 1
 		slider.step = 0.05
 		slider.value = settings[keys[i]]
+		slider.tooltip_text="0 removes shake, drifting and reveal movement" if keys[i]=="motion" else names[i]
 		var value_label := label_at(p,"%d%%" % roundi(slider.value*100),Rect2(594,115+i*71,65,32),16,Palette.MINT)
 		slider.value_changed.connect(func(value):
 			settings[keys[i]] = value
@@ -706,7 +789,7 @@ func show_settings() -> void:
 	var toggles := [["particles","Resource particles"],["contrast","High contrast clues"],["auto_pause","Pause when window loses focus"],["fullscreen","Fullscreen  ·  F11"]]
 	for i in range(toggles.size()):
 		var key: String = toggles[i][0]
-		var toggle := CheckButton.new()
+		var toggle := CheckBox.new()
 		toggle.text = toggles[i][1]
 		toggle.position = Vector2(38,354+i*54)
 		toggle.size = Vector2(614,44)
@@ -718,8 +801,8 @@ func show_settings() -> void:
 			store.write_settings(settings)
 		)
 		p.add_child(toggle)
-	paragraph(p,"Motion at 0 removes shake, drifting and reveal movement.\nAll settings save immediately.",Rect2(38,586,614,56),14)
-	button(p,"Done",Rect2(474,641,178,40),close_modal,true)
+	label_at(p,"Saved automatically",Rect2(38,642,380,35),14,Palette.MUTED)
+	button(p,"Done",Rect2(474,641,178,40),back_modal,true)
 
 func apply_settings() -> void:
 	if scenery:
@@ -798,7 +881,7 @@ func next_expedition() -> void:
 func show_records() -> void:
 	if session == null:
 		return
-	var p := dialog("The atlas of small victories",Vector2(884,750),"records")
+	var p := dialog("Atlas",Vector2(884,750),"records")
 	label_at(p,"%d / 96 fields    ·    %d stars    ·    %s light recovered" % [mini(session.medals.size(),96),session.stars(),format_number(session.total_light)],Rect2(38,110,808,36),19,Palette.MINT)
 	label_at(p,"%d:%02d in the field    /    %d drone reveals    /    %d charges mapped" % [int(session.play_seconds)/60,int(session.play_seconds)%60,session.total_drone,session.total_flags],Rect2(38,151,808,30),15,Palette.MUTED)
 	for r in range(6):
@@ -842,7 +925,7 @@ func show_trial(number: int) -> void:
 	b.disabled = not can_start
 
 func show_credits() -> void:
-	var p := dialog("Made for the small discoveries.",Vector2(750,614),"credits")
+	var p := dialog("About Afterlight",Vector2(750,614),"credits")
 	label_at(p,"AFTERLIGHT",Rect2(38,115,674,60),43,Palette.WHITE,true)
 	paragraph(p,"An original incremental puzzle expedition.\nArt: procedural geometry and cartography.\nMusic and sound: six original scores and oscillator synthesis.\n\nBuilt with Godot Engine 4.7 (MIT licence). Typography uses Godot's bundled Noto Sans (SIL Open Font License).\n\nInspired by quiet science fiction and the pleasure of watching small machines learn.\n\nGame-feel references: Juice It or Lose It, Martin Jonasson & Petri Purho; The Art of Screenshake, Jan Willem Nijman.",Rect2(38,196,674,322),17,Palette.MUTED)
 	button(p,"Engine & library licences",Rect2(38,537,327,44),show_licenses)
@@ -906,7 +989,7 @@ func _input(event: InputEvent) -> void:
 		return
 	if event.keycode == KEY_ESCAPE:
 		if modal_kind != "":
-			close_modal()
+			back_modal()
 		elif selected_tool != "":
 			selected_tool = ""
 			update_hud()

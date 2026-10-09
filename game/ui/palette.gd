@@ -16,6 +16,7 @@ const TILE = Color("8493a5")
 const GLASS = Color("202a3b")
 const FLAG = Color("583c54")
 static var surface_cache: Dictionary = {}
+static var control_cache: Dictionary = {}
 const CLUES = [Color("779797"),Color("83c9ed"),Color("92dbb0"),Color("efad7b"),Color("bfa8eb"),Color("ed9bb7"),Color("e1d08b"),Color("eeeecc"),Color("ffffff")]
 
 static func box(color: Color, radius: int = 12, border: Color = Color.TRANSPARENT, border_width: int = 1) -> StyleBoxFlat:
@@ -75,6 +76,37 @@ static func keycap(canvas: CanvasItem, text: String, rect: Rect2, color: Color) 
 	var font := ThemeDB.fallback_font
 	var width := font.get_string_size(text,HORIZONTAL_ALIGNMENT_LEFT,-1,12).x
 	canvas.draw_string(font,rect.get_center()+Vector2(-width/2,4),text,HORIZONTAL_ALIGNMENT_LEFT,-1,12,color)
+
+static func control_texture(kind: String) -> ImageTexture:
+	if control_cache.has(kind):
+		return control_cache[kind]
+	var image := Image.create(24,24,false,Image.FORMAT_RGBA8)
+	image.fill(Color.TRANSPARENT)
+	var slider := kind=="slider"
+	for y in range(2,22):
+		for x in range(4 if slider else 2,20 if slider else 22):
+			var shade := PANEL_LIGHT
+			if x==(4 if slider else 2) or y==2:
+				shade=EDGE.lightened(0.3) if slider else INK
+			elif x==(19 if slider else 21) or y==21:
+				shade=INK if slider else EDGE
+			image.set_pixel(x,y,shade)
+	if kind=="checked":
+		raster_line(image,Vector2i(6,11),Vector2i(10,16),MINT)
+		raster_line(image,Vector2i(10,16),Vector2i(18,7),MINT)
+	elif slider:
+		raster_line(image,Vector2i(10,7),Vector2i(10,17),MUTED)
+		raster_line(image,Vector2i(14,7),Vector2i(14,17),MUTED)
+	var texture := ImageTexture.create_from_image(image)
+	control_cache[kind]=texture
+	return texture
+
+static func raster_line(image: Image, start: Vector2i, finish: Vector2i, color: Color) -> void:
+	var count := maxi(absi(finish.x-start.x),absi(finish.y-start.y))
+	for i in range(count+1):
+		var p := Vector2i(Vector2(start).lerp(Vector2(finish),float(i)/maxi(1,count)).round())
+		image.set_pixel(p.x,p.y,color)
+		image.set_pixel(p.x+1,p.y,color)
 
 static func icon(canvas: CanvasItem, kind: String, center: Vector2, size_value: float, color: Color) -> void:
 	var r := size_value * 0.5

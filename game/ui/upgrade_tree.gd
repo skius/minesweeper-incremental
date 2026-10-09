@@ -135,7 +135,7 @@ func _draw() -> void:
 		draw_style_box(Palette.surface(Palette.PANEL_LIGHT if owned or lit else Palette.PANEL,not owned),rect)
 		if lit:
 			draw_rect(rect.grow(3),Palette.MINT,false,1.5)
-		Palette.icon(self,item.icon,p,maxf(15,26*zoom),color if owned or ready or lit else color.darkened(0.3))
+		UpgradeIcons.draw(self,item.id,p,maxf(18,29*zoom),color if owned or ready or lit else color.darkened(0.3))
 		if owned:
 			draw_rect(Rect2(p+Vector2(radius-4,radius-4),Vector2(4,4)),Palette.MINT)
 		elif ready:

@@ -10,6 +10,8 @@ Save hardening checkpoint: the critical reviewer supplied an independent malform
 Upgrade impact audit: Clue conductor and automatic cascades now validate safe targets despite wrong flags. Prism/gravity openings penetrate plating, Deep scanner measures actual flood size, Aurora recharges at every stratum, and paid Overdrive runs at 0.3s cycles with its own saved timer and enough capacity on a fleet-only build. Restricted trial tools use a shared availability predicate; prerequisite milestone ordering is consistent. All 73,141 rule/save assertions pass. Pacing must be measured again after these effects and the more capable recycler-aware player policy.
 
 ## Current build
+Visual identity checkpoint: all fifty discoveries now have individually drawn procedural symbols, with shared shapes within each equipment family. Native renders at 32 and 18 logical pixels are distinct; settings share the neutral physical control style. Modal keyboard focus stays inside dialogs and Escape follows menu history. Latest run: 244 native checks and 28 captures. Updated campaign simulations pass at 180.5 / 177.2 minutes for fast policies and 350.4 minutes for the deliberate policy. These durations do not establish player enjoyment. First player feedback identifies repetitive strata, premature locked-node visibility, unclear energy and fullscreen letterboxing; these are active revision work.
+
 The integrated revision is complete on `codex/afterlight`. Main remains unchanged pending player review. Standalone Windows and Compatibility Web exports are under ignored `builds/`; the Windows archive is `builds/Afterlight-1.1.0-Windows.zip`. No store integration was performed.
 
 ## Design delivered

@@ -122,7 +122,17 @@ func run(root_app: Control) -> void:
 	await shot("v2_07_pause")
 	app.show_settings()
 	await shot("v2_08_settings")
-	app.close_modal()
+	for _step in range(18):
+		await key(KEY_TAB)
+		var owner := get_viewport().gui_get_focus_owner()
+		check(owner!=null and app.modal.is_ancestor_of(owner),"settings keyboard focus stays inside the modal")
+	var charge_before: float=app.session.probe_charge
+	app.select_tool("probe")
+	check(app.session.probe_charge==charge_before,"background tool activation is guarded while modal is open")
+	await key(KEY_ESCAPE)
+	check(app.modal_kind=="pause","closing settings returns to pause")
+	await key(KEY_ESCAPE)
+	check(app.modal_kind=="","closing pause returns to field")
 	app.show_guide()
 	await shot("v2_09_guide")
 	app.close_modal()
@@ -234,6 +244,19 @@ func run(root_app: Control) -> void:
 	await shot("v2_25_ending")
 	app.next_expedition()
 	check(app.session.completed_campaign and app.session.index==96,"new campaign ending reaches endless")
+	app.close_modal()
+	app.toast_time=0
+	app.wipe(app.toast_layer)
+	var atlas := load("res://tests/icon_atlas.gd").new() as Control
+	app.modal.add_child(atlas)
+	await shot("v3_28_icon_families")
+	var icon_image := get_viewport().get_texture().get_image()
+	var signatures: Dictionary={}
+	for id in atlas.icon_rects:
+		var signature: int=hash(icon_image.get_region(atlas.icon_rects[id]).get_data())
+		check(not signatures.has(signature),"unique rendered upgrade silhouette: "+id)
+		signatures[signature]=id
+	check(signatures.size()==50,"every discovery owns a distinct rendered symbol")
 	print("AFTERLIGHT %s: %d native input/state checks, %d viewport screenshots" % ["FAIL" if failed else "PASS",checks,shots])
 	get_tree().quit(1 if failed else 0)
 
