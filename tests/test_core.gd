@@ -217,6 +217,8 @@ func run() -> void:
 		check(cursor.id=="lens","upgrade path reaches origin: "+item.id)
 	load("res://tests/upgrade_regressions.gd").run(check)
 	load("res://tests/save_validation_regressions.gd").run(check)
+	load("res://tests/survey_form_regressions.gd").run(check)
+	load("res://tests/preview_regressions.gd").run(check)
 	if failures.is_empty():
 		print("AFTERLIGHT PASS: %d rule and persistence checks" % checks)
 	else:

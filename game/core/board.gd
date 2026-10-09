@@ -5,6 +5,7 @@ const HIDDEN = 0
 const OPEN = 1
 const FLAG = 2
 const HIT = 3
+const SURVEY_FORMS = ["legacy", "shelf", "shaft", "geode"]
 var width: int = 8
 var height: int = 7
 var mine_count: int = 7
@@ -16,14 +17,17 @@ var cells: PackedByteArray = []
 var pockets: PackedByteArray = []
 var plates: PackedByteArray = []
 var crust: int = 0
+var survey_form: String = "legacy"
 
-func setup(w: int, h: int, count: int, seed_value: int, crust_value: int = 0) -> void:
+func setup(w: int, h: int, count: int, seed_value: int, crust_value: int = 0, form_value: String = "legacy") -> void:
+	assert(form_value in SURVEY_FORMS, "Unknown survey form")
 	width = w
 	height = h
 	mine_count = clampi(count, 1, w * h - 10)
 	board_seed = seed_value
 	generated = false
 	crust = crust_value
+	survey_form = form_value
 	plates.resize(w * h)
 	plates.fill(0)
 	mines.resize(w * h)
@@ -69,13 +73,76 @@ func generate(first: int) -> void:
 		for n in neighbours(i):
 			adjacent += mines[n]
 		clues[i] = adjacent
-		if mines[i] == 0 and not excluded.has(i) and rng.randf() < 0.07:
+		if survey_form == "legacy" and mines[i] == 0 and not excluded.has(i) and rng.randf() < 0.07:
 			pockets[i] = 1
-	# Plating conceals no clue information; it is an excavation layer.
-	for i in range(cells.size()):
-		if not excluded.has(i) and crust > 0 and rng.randf() < 0.48:
-			plates[i] = crust
+	if survey_form == "legacy":
+		# Keep the original stream exactly for old, not-yet-opened saves.
+		for i in range(cells.size()):
+			if not excluded.has(i) and crust > 0 and rng.randf() < 0.48:
+				plates[i] = crust
+	else:
+		_generate_survey_terrain(excluded)
 	generated = true
+
+func _generate_survey_terrain(excluded: Array[int]) -> void:
+	# Mine positions use their own unchanged shuffle. These independent streams
+	# ensure terrain tuning cannot change a puzzle's mines or clue arithmetic.
+	var plate_rng := RandomNumberGenerator.new()
+	plate_rng.seed = board_seed ^ 0x504C4154
+	var pocket_rng := RandomNumberGenerator.new()
+	pocket_rng.seed = board_seed ^ 0x504F434B
+	var anchors: Array[Vector2] = []
+	var bands: Array[Vector2i] = []
+	var radius := maxf(2.1, minf(width, height) * 0.225)
+	if survey_form in ["shelf", "shaft"]:
+		var span := height if survey_form == "shelf" else width
+		var thickness := maxi(1, roundi(span * 0.14))
+		for band in range(3):
+			var jitter := plate_rng.randi_range(-1, 1) if span > 9 else 0
+			var start := clampi(roundi((band + 0.5) * span / 3.0 - thickness * 0.5) + jitter, 0, span - thickness)
+			bands.append(Vector2i(start, start + thickness))
+			var middle := start + (thickness - 1) * 0.5
+			if survey_form == "shelf":
+				anchors.append(Vector2(1, middle))
+				anchors.append(Vector2(width - 2, middle))
+			else:
+				anchors.append(Vector2(middle, 1))
+				anchors.append(Vector2(middle, height - 2))
+	else:
+		for fraction in [Vector2(0.24,0.27), Vector2(0.76,0.34), Vector2(0.48,0.76)]:
+			var p: Vector2 = fraction * Vector2(width - 1, height - 1)
+			p += Vector2(plate_rng.randf_range(-0.6,0.6), plate_rng.randf_range(-0.6,0.6))
+			anchors.append(p)
+	var pocket_candidates: Array[Dictionary] = []
+	for i in range(cells.size()):
+		if excluded.has(i):
+			continue
+		var point := Vector2(i % width, i / width)
+		var nearest := INF
+		for anchor in anchors:
+			var delta := (point - anchor).abs()
+			var distance := point.distance_to(anchor)
+			if survey_form == "shelf":
+				distance = delta.x + delta.y * 2.5
+			elif survey_form == "shaft":
+				distance = delta.x * 2.5 + delta.y
+			nearest = minf(nearest, distance)
+		if crust > 0:
+			if survey_form in ["shelf", "shaft"]:
+				var coordinate := int(point.y) if survey_form == "shelf" else int(point.x)
+				for band in bands:
+					if coordinate >= band.x and coordinate < band.y:
+						plates[i] = crust
+			elif nearest <= radius:
+				plates[i] = mini(6, crust + (1 if nearest <= radius * 0.42 else 0))
+		if mines[i] == 0:
+			pocket_candidates.append({"cell":i, "score":nearest + pocket_rng.randf_range(0,0.6)})
+	# Fixed density, with row/column termini or compact geode clusters. All
+	# pockets remain safe and never alter the truthful Minesweeper clues.
+	pocket_candidates.sort_custom(func(a,b): return a.score < b.score)
+	var count := mini(pocket_candidates.size(), maxi(1, roundi((width * height - mine_count) * 0.07)))
+	for j in range(count):
+		pockets[pocket_candidates[j].cell] = 1
 
 func reveal(i: int) -> Array[int]:
 	var changed: Array[int] = []
@@ -215,7 +282,7 @@ func safe_probe() -> int:
 	return fallback
 
 func to_dict() -> Dictionary:
-	return {"width":width,"height":height,"mine_count":mine_count,"seed":board_seed,"generated":generated,"mines":Array(mines),"clues":Array(clues),"cells":Array(cells),"pockets":Array(pockets),"plates":Array(plates),"crust":crust}
+	return {"width":width,"height":height,"mine_count":mine_count,"seed":board_seed,"generated":generated,"mines":Array(mines),"clues":Array(clues),"cells":Array(cells),"pockets":Array(pockets),"plates":Array(plates),"crust":crust,"form":survey_form}
 
 # Pulse may penetrate its target plate, but the flood still respects all other
 # plating and flags. Deep scanner compares the actual resulting openings.
@@ -240,7 +307,7 @@ static func from_dict(data: Dictionary) -> MineBoard:
 	if not validate(data):
 		return null
 	var b := MineBoard.new()
-	b.setup(int(data.width), int(data.height), int(data.mine_count), int(data.seed))
+	b.setup(int(data.width), int(data.height), int(data.mine_count), int(data.seed), int(data.get("crust",0)), data.get("form","legacy"))
 	b.generated = data.generated
 	b.mines = PackedByteArray(data.mines)
 	b.clues = PackedByteArray(data.clues)
@@ -259,6 +326,8 @@ static func validate(data: Dictionary) -> bool:
 		if not integer_value(data[key],-9_000_000_000_000_000,9_000_000_000_000_000):
 			return false
 	if not data.generated is bool or not integer_value(data.get("crust",0),0,12):
+		return false
+	if not data.get("form", "legacy") is String or data.get("form", "legacy") not in SURVEY_FORMS:
 		return false
 	var w := int(data.width)
 	var h := int(data.height)

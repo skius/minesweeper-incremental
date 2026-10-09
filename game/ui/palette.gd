@@ -111,6 +111,19 @@ static func raster_line(image: Image, start: Vector2i, finish: Vector2i, color: 
 static func icon(canvas: CanvasItem, kind: String, center: Vector2, size_value: float, color: Color) -> void:
 	var r := size_value * 0.5
 	match kind:
+		"zoom_in","zoom_out","zoom_fit":
+			if kind=="zoom_fit":
+				for x in [-1,1]:
+					for y in [-1,1]:
+						var p := center+Vector2(x,y)*r*0.75
+						canvas.draw_line(p,p-Vector2(x*r*0.45,0),color,1.6,true)
+						canvas.draw_line(p,p-Vector2(0,y*r*0.45),color,1.6,true)
+			else:
+				canvas.draw_arc(center-Vector2.ONE*r*0.16,r*0.63,0,TAU,24,color,1.6,true)
+				canvas.draw_line(center+Vector2.ONE*r*0.29,center+Vector2.ONE*r*0.8,color,2,true)
+				canvas.draw_line(center+Vector2(-0.5,-0.16)*r,center+Vector2(0.18,-0.16)*r,color,1.4,true)
+				if kind=="zoom_in":
+					canvas.draw_line(center+Vector2(-0.16,-0.5)*r,center+Vector2(-0.16,0.18)*r,color,1.4,true)
 		"pause":
 			for side in [-1,1]:
 				canvas.draw_rect(Rect2(center+Vector2(side*r*0.43-r*0.15,-r*0.7),Vector2(r*0.3,r*1.4)),color)
@@ -169,6 +182,8 @@ static func icon(canvas: CanvasItem, kind: String, center: Vector2, size_value: 
 			canvas.draw_line(center+Vector2(r,-r*0.5),center+Vector2(r,r*0.5),color,1.6,true)
 		"shield":
 			canvas.draw_polyline(PackedVector2Array([center+Vector2(-r,-r*0.7),center+Vector2(0,-r),center+Vector2(r,-r*0.7),center+Vector2(r*0.7,r*0.35),center+Vector2(0,r),center+Vector2(-r*0.7,r*0.35),center+Vector2(-r,-r*0.7)]),color,2,true)
+		"energy":
+			canvas.draw_colored_polygon(PackedVector2Array([center+Vector2(0.2,-1)*r,center+Vector2(-0.64,0.16)*r,center+Vector2(-0.06,0.16)*r,center+Vector2(-0.24,1)*r,center+Vector2(0.66,-0.2)*r,center+Vector2(0.12,-0.2)*r]),color)
 		"battery":
 			canvas.draw_rect(Rect2(center-Vector2(r*0.6,r),Vector2(r*1.2,r*2)),color,false,1.8)
 			canvas.draw_line(center+Vector2(-r*0.3,0),center+Vector2(r*0.3,0),color,2,true)

@@ -159,6 +159,7 @@ func run(root_app: Control) -> void:
 	await shot("v2_12_excavation")
 	await key(KEY_2)
 	check(app.selected_tool=="cross","crossbeam is aimable")
+	check(app.hud.has("energy") and app.hud.energy.cost==6,"aiming a beam quotes energy beside the tool dock")
 	await click(app.board_view.position+app.board_view.cell_position(95))
 	check(app.session.strikes==0,"beam preserves safe excavation")
 	await shot("v2_13_beam")
@@ -211,6 +212,19 @@ func run(root_app: Control) -> void:
 	await shot("v2_18_small_tree")
 	app.close_modal()
 	await shot("v2_19_small_field")
+	app.session.drones_enabled=false
+	for _i in range(4):
+		await click(app.hud.zoom_in.global_position+app.hud.zoom_in.size/2)
+	check(app.board_view.zoom==2,"native zoom control doubles clue size")
+	check(app.board_view.tile_size*960.0/app.size.x>=28,"zoom gives readable physical clue tiles at minimum window size")
+	app.board_view.keyboard_cell=app.session.board.cells.size()-app.session.board.width-1
+	await key(KEY_DOWN)
+	check(app.board_view.visible_cell(app.board_view.keyboard_cell),"keyboard navigation pans to keep the selected clue visible")
+	var zoom_index: int=app.board_view.keyboard_cell
+	check(app.board_view.index_at(app.board_view.cell_position(zoom_index))==zoom_index,"zoomed coordinates map to the correct board cell")
+	await shot("v3_33_zoomed_field")
+	await click(app.hud.zoom_fit.global_position+app.hud.zoom_fit.size/2)
+	check(app.board_view.zoom==1 and app.board_view.view_offset==Vector2i.ZERO,"fit control restores the complete field")
 	DisplayServer.window_set_size(Vector2i(1920,1080))
 	await shot("v2_20_wide_field")
 	check(is_equal_approx(app.size.x/app.size.y,1920.0/1080.0),"16:9 viewport expands without letterboxing")
@@ -253,7 +267,14 @@ func run(root_app: Control) -> void:
 	app.quit_game()
 	check(app.modal_kind=="save_error","failed save keeps game open")
 	await shot("v2_24_save_recovery")
+	app.show_settings()
+	app.save_settings()
+	check(not app.settings_saved and app.settings_retry_button.visible,"failed settings write exposes a retry action")
+	check(app.settings_status_label.text.contains("could not"),"settings failure does not claim saved")
+	await shot("v3_31_settings_retry")
 	app.store.directory=original_directory
+	app.save_settings()
+	check(app.settings_saved and not app.settings_retry_button.visible,"settings retry succeeds once storage is restored")
 	app.close_modal()
 	configure(95)
 	app.session.stratum=Content.strata_for(95)-1
@@ -261,6 +282,16 @@ func run(root_app: Control) -> void:
 		app.session.probe_one("tool")
 	app.consume_events()
 	await frames(90)
+	app.store.directory=blocker_path+"/"
+	app.show_completion()
+	var failure_labels: Array=app.modal.find_children("*","Label",true,false)
+	var reports_failure := false
+	for failure_label in failure_labels:
+		reports_failure=reports_failure or failure_label.text.begins_with("Save failed")
+	check(reports_failure,"completion keeps save failure visible after opening its dialog")
+	await shot("v3_32_completion_retry")
+	app.store.directory=original_directory
+	app.show_completion()
 	await shot("v2_25_ending")
 	app.next_expedition()
 	check(app.session.completed_campaign and app.session.index==96,"new campaign ending reaches endless")
@@ -277,6 +308,14 @@ func run(root_app: Control) -> void:
 		check(not signatures.has(signature),"unique rendered upgrade silhouette: "+id)
 		signatures[signature]=id
 	check(signatures.size()==50,"every discovery owns a distinct rendered symbol")
+	app.wipe(app.modal)
+	for page in range(5):
+		for after in [false,true]:
+			var previews := load("res://tests/preview_atlas.gd").new() as Control
+			app.modal.add_child(previews)
+			previews.populate(page,after)
+			await shot("v3_preview_%d_%s" % [page,"after" if after else "before"])
+			app.wipe(app.modal)
 	print("AFTERLIGHT %s: %d native input/state checks, %d viewport screenshots" % ["FAIL" if failed else "PASS",checks,shots])
 	get_tree().quit(1 if failed else 0)
 

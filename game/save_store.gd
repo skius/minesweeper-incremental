@@ -98,9 +98,20 @@ func load_settings() -> Dictionary:
 	return result
 
 func write_settings(settings: Dictionary) -> bool:
-	var file := FileAccess.open(path("settings.json"), FileAccess.WRITE)
+	last_error=""
+	var encoded := JSON.stringify(settings)
+	var file := FileAccess.open(path("settings.tmp"), FileAccess.WRITE)
 	if file == null:
+		last_error="Could not save settings. Check free space and folder permissions."
 		return false
-	file.store_string(JSON.stringify(settings))
+	file.store_string(encoded)
+	file.flush()
+	var err := file.get_error()
 	file.close()
+	if err!=OK or FileAccess.get_file_as_string(path("settings.tmp"))!=encoded:
+		last_error="Settings verification failed. Your previous settings are intact."
+		return false
+	if DirAccess.rename_absolute(path("settings.tmp"),path("settings.json"))!=OK:
+		last_error="Could not replace the settings file. Your previous settings are intact."
+		return false
 	return true

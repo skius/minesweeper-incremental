@@ -76,7 +76,7 @@ func start_board() -> void:
 	stratum = 0
 	layer_ready = false
 	var spec := Content.contract(index, trial, stratum)
-	board.setup(spec.width, spec.height, spec.mines, spec.seed, spec.crust)
+	board.setup(spec.width, spec.height, spec.mines, spec.seed, spec.crust, spec.form)
 	board_seconds = 0
 	energy = capacity()
 	probe_charge = 1
@@ -279,7 +279,7 @@ func _chord(i: int) -> void:
 				if board.cells[n]==MineBoard.FLAG:
 					board.cells[n]=MineBoard.HIDDEN
 	if targets.is_empty():
-		events.append({"type":"tip","text":"Match this clue with neighbouring flags before chording."})
+		events.append({"type":"blocked_action","reason":"flags","cell":i})
 		return
 	var strikes_before := strikes
 	for n in targets:
@@ -382,7 +382,7 @@ func _use_tool(id: String, i: int = -1) -> bool:
 		events.append({"type":"tool","id":id,"cell":i})
 		return true
 	if energy < effective_tool_cost(id,i):
-		events.append({"type":"tip","text":"More energy needed. Reveal safe tiles or let the capacitor recharge."})
+		events.append({"type":"blocked_action","reason":"energy","cell":i})
 		return false
 	if id == "overdrive":
 		if overdrive_seconds>0:
@@ -401,7 +401,7 @@ func _use_tool(id: String, i: int = -1) -> bool:
 		if board.mines[n] == 0 and board.cells[n] != MineBoard.OPEN:
 			any = true
 	if not any:
-		events.append({"type":"tip","text":"Already surveyed. Aim at covered ground; no energy was spent."})
+		events.append({"type":"blocked_action","reason":"empty","cell":i})
 		return false
 	energy -= effective_tool_cost(id,i)
 	for n in targets:
@@ -574,7 +574,7 @@ static func from_dict(data: Dictionary) -> GameSession:
 	var result := GameSession.new()
 	for key in ["stratum","layer_ready","excavations","manual_excavations","index","trial","credits","cores","medals","trial_medals","total_light","total_reveals","total_flags","total_drone","total_strikes","play_seconds","board_seconds","energy","probe_charge","drone_clock","overclock","overdrive_seconds","descent_clock","chain","strikes","manual_actions","board_earned","finished","completed_campaign","drones_enabled","last_reward","seen_intro","livery"]:
 		if data.has(key):
-			result.set(key, data[key])
+			result.set(key, data[key].duplicate(true) if data[key] is Dictionary or data[key] is Array else data[key])
 	for id in data.upgrades:
 		if not id is String or Content.upgrade(id).is_empty():
 			return null
@@ -633,7 +633,7 @@ func advance_layer() -> bool:
 	stratum += 1
 	layer_ready = false
 	var spec := Content.contract(index,trial,stratum)
-	board.setup(spec.width,spec.height,spec.mines,spec.seed,spec.crust)
+	board.setup(spec.width,spec.height,spec.mines,spec.seed,spec.crust,spec.form)
 	drone_clock = 0
 	if not has("legacy"):
 		chain = 0

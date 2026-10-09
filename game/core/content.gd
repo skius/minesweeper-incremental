@@ -18,13 +18,13 @@ const UPGRADES = [
 	{"id":"lens","name":"Survey lens","group":-1,"cost":24,"cores":0,"rank":0,"pre":"","icon":"lens","desc":"A survey lens lights up the eight neighbours of any clue.","branch":-1,"depth":0,"side":0},
 	{"id":"salvage","name":"Charge reclamation","group":2,"cost":100,"cores":1,"rank":1,"pre":"lens","icon":"flag","desc":"Correct flags pay 8 light when each stratum clears.","branch":5,"depth":1,"side":-1},
 	{"id":"probe2","name":"Twin pulse","group":0,"cost":140,"cores":1,"rank":1,"pre":"lens","icon":"pulse","desc":"Your free probe opens two safe tiles instead of one.","branch":0,"depth":1,"side":-1},
-	{"id":"drone","name":"Scout drone","group":1,"cost":180,"cores":2,"rank":2,"pre":"lens","icon":"drone","desc":"A companion opens one logically safe tile every 3 seconds. Never guesses.","branch":1,"depth":1,"side":-1},
+	{"id":"drone","name":"Scout drone","group":1,"cost":100,"cores":1,"rank":0,"pre":"lens","icon":"drone","desc":"A companion opens one logically safe tile every 3 seconds. Never guesses.","branch":1,"depth":1,"side":-1},
 	{"id":"chain","name":"Chain reactor","group":2,"cost":350,"cores":2,"rank":2,"pre":"lens","icon":"cross","desc":"Safe manual reveals build a persistent multiplier, up to 3 times light.","branch":3,"depth":1,"side":-1},
 	{"id":"focus","name":"Focused pulse","group":0,"cost":160,"cores":1,"rank":3,"pre":"probe2","icon":"lens","desc":"Aim Pulse at a tile. It finds safe ground closest to your cursor.","branch":0,"depth":1,"side":1},
-	{"id":"cross","name":"Crossbeam","group":0,"cost":260,"cores":2,"rank":5,"pre":"probe2","icon":"cross","desc":"New tool: safely sweep a cross through the selected tile. Costs 6 energy.","branch":0,"depth":2,"side":1},
+	{"id":"cross","name":"Crossbeam","group":0,"cost":100,"cores":1,"rank":0,"pre":"lens","icon":"cross","desc":"New tool: safely sweep a cross through the selected tile. Costs 6 energy.","branch":0,"depth":2,"side":1},
 	{"id":"flagger","name":"Cartographer","group":1,"cost":450,"cores":2,"rank":5,"pre":"drone","icon":"flag","desc":"Your drone also marks mines proven by adjacent clues.","branch":1,"depth":1,"side":1},
 	{"id":"battery","name":"Seed capacitor","group":2,"cost":420,"cores":2,"rank":6,"pre":"lens","icon":"battery","desc":"Store 18 energy. Every uncovered pocket refills 4 energy.","branch":2,"depth":1,"side":-1},
-	{"id":"drill","name":"Diamond pick","group":2,"cost":420,"cores":1,"rank":8,"pre":"chain","icon":"line","desc":"Manual work breaks three layers of plating in a single hit.","branch":3,"depth":1,"side":1},
+	{"id":"drill","name":"Diamond pick","group":2,"cost":220,"cores":1,"rank":6,"pre":"chain","icon":"line","desc":"Manual work breaks three layers of plating in a single hit.","branch":3,"depth":1,"side":1},
 	{"id":"shield","name":"Soft landing","group":2,"cost":600,"cores":2,"rank":9,"pre":"salvage","icon":"shield","desc":"The first mine hit per expedition keeps your chain and energy intact.","branch":5,"depth":1,"side":1},
 	{"id":"prism","name":"Prism echo","group":2,"cost":700,"cores":3,"rank":10,"pre":"lens","icon":"prism","desc":"Pockets open an extra safe tile through any plating. Pulse opens three tiles.","branch":4,"depth":1,"side":-1},
 	{"id":"pair","name":"Wingmate","group":1,"cost":850,"cores":3,"rank":11,"pre":"drone","icon":"drone","desc":"A second drone joins. Both act each cycle, with independent deductions.","branch":1,"depth":2,"side":-1},
@@ -87,6 +87,7 @@ static func contract(index: int, trial: int = -1, stratum: int = 0) -> Dictionar
 	var width: int = [9,13,16,19,22,24][region] + step / 8
 	var height: int = [8,10,12,13,14,16][region] + (1 if step >= 8 and region < 4 else 0)
 	var density := 0.16 + region * 0.024 + (step % 4) * 0.008 + minf(stratum * 0.002,0.015)
+	var form := "legacy"
 	if index < 3:
 		width = 6 + index
 		height = 5 + index
@@ -95,8 +96,22 @@ static func contract(index: int, trial: int = -1, stratum: int = 0) -> Dictionar
 		width = 11 + trial / 3
 		height = 9 + trial / 4
 		density = 0.19 + (trial % 3) * 0.015
+	elif index >= 6:
+		# Shape and terrain change how a toolkit is used, rather than adding
+		# another copy of the same rectangle. Adjacent strata always differ.
+		form = ["shelf", "shaft", "geode"][(index - 6 + stratum) % 3]
+		match form:
+			"shelf":
+				width = mini(26, [13,17,20,22,24,26][region] + step / 8)
+				height = [6,8,10,12,13,15][region]
+			"shaft":
+				width = mini(14, [7,9,10,11,12,13][region] + step / 8)
+				height = mini(18, [11,13,15,16,17,18][region] + step / 8)
+			"geode":
+				width = mini(18, [9,12,14,16,17,18][region] + step / 8)
+				height = width
 	var board_seed := 350003+trial*11003 if trial>=0 else 71093+index*7919+stratum*104729
-	return {"width":width,"height":height,"mines":int(width * height * density),"seed":board_seed,"region":region,"step":step,"trial":trial,"finale":step == 15 and trial<0,"crust":0 if index<6 or trial>=0 else mini(6,1+region+stratum/4)}
+	return {"width":width,"height":height,"mines":int(width * height * density),"seed":board_seed,"region":region,"step":step,"trial":trial,"finale":step == 15 and trial<0,"crust":0 if index<6 or trial>=0 else mini(6,maxi(2,1+region+stratum/4)),"form":form}
 
 static func upgrade(id: String) -> Dictionary:
 	for item in UPGRADES:

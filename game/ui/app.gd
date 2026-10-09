@@ -24,6 +24,9 @@ var hud_clock: float = 0
 var save_pending: bool = false
 var save_delay: float = 0
 var save_status: String = "All progress saved"
+var settings_saved: bool = true
+var settings_status_label: Label
+var settings_retry_button: Button
 var toast_time: float = 0
 var finish_delay: float = -1
 var visual_test: bool = false
@@ -33,6 +36,7 @@ var upgrade_tree: UpgradeTree
 var tree_detail: Control
 var tree_selected: String = "lens"
 var ui_stage: int = -1
+var board_zoom: float = 1
 
 func _ready() -> void:
 	get_tree().auto_accept_quit = false
@@ -137,7 +141,7 @@ func layout_ui() -> void:
 				shift.x=extra.x
 			if base.position.y<110:
 				shift.y=0
-			elif base.position.y>=760:
+			elif base.position.y>=750:
 				shift.y=extra.y
 			if child==board_view and session.index>=3:
 				shift=Vector2.ZERO
@@ -145,6 +149,9 @@ func layout_ui() -> void:
 		child.position=base.position+shift
 	if is_instance_valid(board_view) and hud.has("flag_mode"):
 		hud.flag_mode.position=Vector2(board_view.size.x-73,48)
+	if is_instance_valid(board_view) and hud.has("zoom_in"):
+		for j in range(3):
+			hud[["zoom_out","zoom_fit","zoom_in"][j]].position=Vector2(board_view.size.x-212+j*42,48)
 	for child in modal.get_children():
 		if child is ColorRect:
 			child.size=size
@@ -342,11 +349,19 @@ func build_field() -> void:
 	board_view.session = session
 	board_view.motion = settings.motion
 	board_view.high_contrast = settings.contrast
+	board_view.zoom=board_zoom if session.index>=3 else 1
+	board_view.zoom_changed.connect(func(value): board_zoom=value)
 	board_view.cell_pressed.connect(on_cell)
 	board_view.cell_hovered.connect(on_hover)
 	ui.add_child(board_view)
 	if ui_stage>=1:
 		hud.flag_mode=symbol_button(board_view,"flag",Rect2(rect.size.x-73,48,44,34),toggle_flag_mode,"Flag mode · left click places flags · F")
+	if session.index>=3:
+		for j in range(3):
+			var kind: String=["zoom_out","zoom_fit","zoom_in"][j]
+			hud[kind]=symbol_button(board_view,kind,Rect2(rect.size.x-212+j*42,48,38,34),func():
+				board_view.set_zoom(1 if kind=="zoom_fit" else board_view.zoom+(-0.25 if kind=="zoom_out" else 0.25))
+			,["Zoom out","Show whole field","Zoom in · scroll to zoom\nMiddle-drag or click the overview to pan"][j])
 	var accent := Color(Content.REGIONS[session.region()].color)
 	var field_label := label_at(ui,"",Rect2(66,388,93,64),30,accent,true)
 	field_label.tooltip_text = "Current site"
@@ -367,10 +382,13 @@ func build_field() -> void:
 		hud.fleet_button = fleet_button
 		hud.fleet_state = icon(ui,"pulse",Rect2(1326,508,30,30),Palette.MUTED,18)
 		hud.fleet_state.mouse_filter = MOUSE_FILTER_PASS
-	if session.has("cross"):
-		panel(ui,Rect2(555,760,330,4),Palette.EDGE,2)
-		hud.energy_bar = panel(ui,Rect2(555,760,330,4),accent,2)
-		hud.energy_bar.mouse_filter = MOUSE_FILTER_PASS
+	if session.has("cross") or session.has("overdrive") or session.has("oracle"):
+		var meter := EnergyMeter.new()
+		meter.position=Vector2(555,753)
+		meter.size=Vector2(330,32)
+		meter.motion=settings.motion
+		ui.add_child(meter)
+		hud.energy=meter
 	var cue := InputCue.new()
 	cue.position=Vector2(620,732 if early else 841)
 	cue.size=Vector2(200,38)
@@ -403,6 +421,8 @@ func build_tools() -> void:
 		b.tooltip_text = tool_help(id)
 		tool_buttons[id] = b
 		hud["charge_"+id] = label_at(b,"",Rect2(39,44,28,18),11,Palette.GOLD)
+		if id!="probe":
+			icon(b,"energy",Rect2(26,47,11,12),Palette.GOLD,11)
 	if session.layer_ready or session.finished:
 		for b in tool_buttons.values():
 			b.visible = false
@@ -453,9 +473,17 @@ func update_hud() -> void:
 		flag_glyph.color=Palette.INK if settings.flag_mode else Palette.WHITE
 		flag_glyph.queue_redraw()
 		hud.flag_mode.tooltip_text="Flag mode on · click to return to revealing" if settings.flag_mode else "Flag mode · left click places flags · F"
-	if hud.has("energy_bar"):
-		hud.energy_bar.size.x = maxf(1,330*session.energy/session.capacity())
-		hud.energy_bar.tooltip_text = "%d / %d energy" % [session.energy,session.capacity()]
+	if hud.has("energy"):
+		var meter: EnergyMeter=hud.energy
+		if session.energy>meter.available+0.25:
+			meter.flash=1
+		meter.available=session.energy
+		meter.capacity=session.capacity()
+		meter.cost=0
+		meter.visible=not session.layer_ready and not session.finished
+		var target := board_view.keyboard_cell if board_view.keyboard_cell>=0 else board_view.hover
+		if selected_tool!="" and selected_tool!="probe":
+			meter.cost=session.effective_tool_cost(selected_tool,target) if target>=0 else session.minimum_tool_cost(selected_tool)
 	var b := session.board
 	hud.progress.text = "%d / %d" % [b.open_count(),b.width*b.height-b.mine_count]
 	if hud.has("chain"):
@@ -475,6 +503,7 @@ func update_hud() -> void:
 			caption.text="%ds" % ceili(session.overdrive_seconds)
 		var tool_glyph := btool.get_child(0) as Glyph
 		tool_glyph.color=Palette.GOLD if running else Palette.MINT
+		tool_glyph.recharge=clampf(session.probe_charge,0,1) if id=="probe" else -1
 		tool_glyph.queue_redraw()
 		btool.add_theme_stylebox_override("normal",Palette.surface(Palette.MINT.darkened(0.55) if selected_tool==id else Palette.PANEL_LIGHT,selected_tool!=id))
 	if hud.has("fleet_title"):
@@ -577,6 +606,7 @@ func on_hover(i: int) -> void:
 	# Clue/flag/plate counts are drawn in the terminal's footer, away from the
 	# puzzle. A popup must never cover the neighbouring cells being inspected.
 	board_view.tooltip_text = ""
+	update_hud()
 
 func select_tool(id: String) -> void:
 	if modal_kind!="" or not session.tool_available(id):
@@ -617,7 +647,7 @@ func toggle_drones() -> void:
 func toggle_flag_mode() -> void:
 	settings.flag_mode=not settings.flag_mode
 	selected_tool=""
-	store.write_settings(settings)
+	save_settings()
 	update_hud()
 
 func after_action() -> void:
@@ -634,8 +664,9 @@ func consume_events() -> void:
 		match event.type:
 			"reveal":
 				board_view.animate_cells(event.cells,event.source)
-				if event.amount > 0:
-					var p := board_view.position+board_view.cell_position(event.cells[0])
+				var visible: Array=event.cells.filter(func(cell): return board_view.visible_cell(cell))
+				if event.amount > 0 and not visible.is_empty():
+					var p := board_view.position+board_view.cell_position(visible[0])
 					effects.popup(p,"+%d" % event.amount,Palette.MINT)
 					effects.burst(p,Palette.MINT,mini(event.cells.size()*2+3,18),hud.light.position+Vector2(-24,19) if hud.has("light") else Vector2(-1,-1))
 					audio.play("reveal",pow(2,float(mini(event.chain,16)%5)/12))
@@ -644,7 +675,8 @@ func consume_events() -> void:
 				board_view.animations[event.cell] = 0
 				if event.get("source","")=="drone":
 					board_view.visit_drone(event.cell)
-				effects.burst(p,Palette.GOLD,6 if event.broken else 3)
+				if board_view.visible_cell(event.cell):
+					effects.burst(p,Palette.GOLD,6 if event.broken else 3)
 				audio.play("flag",0.8 if not event.broken else 1.2)
 			"layer_complete":
 				board_view.complete_wave = 0
@@ -655,6 +687,7 @@ func consume_events() -> void:
 			"strike":
 				var p := board_view.position+board_view.cell_position(event.cell)
 				board_view.shake = 3
+				board_view.strike_age=2
 				effects.burst(p,Palette.CORAL,18)
 				effects.ring(p,Palette.CORAL)
 				audio.play("strike")
@@ -664,21 +697,30 @@ func consume_events() -> void:
 				board_view.animations[event.cell] = 0
 			"pocket":
 				var p := board_view.position+board_view.cell_position(event.cell)
-				effects.ring(p,Palette.GOLD)
+				if board_view.visible_cell(event.cell):
+					effects.ring(p,Palette.GOLD)
 				audio.play("pocket")
 			"tool":
 				audio.play("tool")
 				var p := board_view.position+board_view.size/2 if event.cell < 0 else board_view.position+board_view.cell_position(event.cell)
-				effects.ring(p,Palette.MINT)
+				if event.cell<0 or board_view.visible_cell(event.cell):
+					effects.ring(p,Palette.MINT)
 				if event.cell >= 0 and event.id in ["line","cross","nova"]:
 					for target in session.tool_cells(event.id,event.cell):
-						effects.beam(p,board_view.position+board_view.cell_position(target),Palette.MINT)
+						if board_view.visible_cell(target) and board_view.visible_cell(event.cell):
+							effects.beam(p,board_view.position+board_view.cell_position(target),Palette.MINT)
 			"upgrade":
 				audio.play("upgrade")
 				effects.burst(Vector2(1100,500),Palette.GOLD,30)
 
 			"tip":
 				toast(event.text,4)
+			"blocked_action":
+				board_view.rejected_cell=event.cell
+				board_view.reject_age=0.8
+				if event.reason=="energy" and hud.has("energy"):
+					hud.energy.flash=1
+				audio.play("flag",0.7)
 			"complete":
 				board_view.complete_wave = 0
 				effects.burst(board_view.position+board_view.size/2,Palette.GOLD,40)
@@ -730,6 +772,16 @@ func save_game() -> bool:
 	autosave_clock = 0
 	save_pending = false
 	return success
+
+func save_settings() -> void:
+	settings_saved=store.write_settings(settings)
+	if is_instance_valid(settings_status_label):
+		settings_status_label.text="Saved automatically" if settings_saved else "Settings could not be saved"
+		settings_status_label.add_theme_color_override("font_color",Palette.MUTED if settings_saved else Palette.CORAL)
+	if is_instance_valid(settings_retry_button):
+		settings_retry_button.visible=not settings_saved
+	if not settings_saved and modal_kind!="settings":
+		toast(store.last_error,7)
 
 func toast(message: String, duration: float = 3.5) -> void:
 	wipe(toast_layer)
@@ -811,8 +863,10 @@ func show_pause() -> void:
 	button(p,"Field guide",Rect2(277,239,225,48),show_guide)
 	button(p,"Atlas & records",Rect2(38,303,464,48),show_records)
 	button(p,"Save & main menu",Rect2(38,367,464,48),func():
-		save_game()
-		show_menu()
+		if save_game():
+			show_menu()
+		else:
+			show_pause()
 	)
 	button(p,"Save & quit",Rect2(38,431,464,48),quit_game)
 	label_at(p,"F10  Capture a local field report",Rect2(38,518,464,26),14,Palette.MUTED)
@@ -836,7 +890,7 @@ func show_settings() -> void:
 			settings[keys[i]] = value
 			value_label.text = "%d%%" % roundi(value*100)
 			apply_settings()
-			store.write_settings(settings)
+			save_settings()
 		)
 		p.add_child(slider)
 	rule(p,Vector2(38,333),614)
@@ -852,10 +906,12 @@ func show_settings() -> void:
 		toggle.toggled.connect(func(value):
 			settings[key] = value
 			apply_settings()
-			store.write_settings(settings)
+			save_settings()
 		)
 		p.add_child(toggle)
-	label_at(p,"Saved automatically",Rect2(38,642,380,35),14,Palette.MUTED)
+	settings_status_label=label_at(p,"Saved automatically" if settings_saved else "Settings could not be saved",Rect2(38,642,270,35),14,Palette.MUTED if settings_saved else Palette.CORAL)
+	settings_retry_button=button(p,"Retry",Rect2(333,641,114,40),save_settings)
+	settings_retry_button.visible=not settings_saved
 	button(p,"Done",Rect2(474,641,178,40),back_modal,true)
 
 func apply_settings() -> void:
@@ -870,6 +926,8 @@ func apply_settings() -> void:
 	if board_view:
 		board_view.motion = settings.motion
 		board_view.high_contrast = settings.contrast
+	if hud.has("energy"):
+		hud.energy.motion=settings.motion
 	if not visual_test and not OS.has_feature("web"):
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if settings.fullscreen else DisplayServer.WINDOW_MODE_WINDOWED)
 
@@ -904,6 +962,7 @@ func show_region(number: int) -> void:
 func show_completion() -> void:
 	if not session.finished:
 		return
+	var saved := save_game()
 	var reward := session.last_reward
 	var region_end: bool = reward.region_end
 	var ending := region_end and session.index == 95
@@ -921,7 +980,9 @@ func show_completion() -> void:
 	button(p,"Grow",Rect2(38,y+78,253,56),show_tree)
 	var next := button(p,"Beyond dawn →" if ending else ("Return →" if session.trial>=0 else "Next site →"),Rect2(309,y+78,361,56),next_expedition,true)
 	next.grab_focus()
-	label_at(p,"Saved",Rect2(38,dimensions.y-45,200,26),12,Palette.MUTED)
+	label_at(p,"Saved" if saved else "Save failed · progress is still in memory",Rect2(38,dimensions.y-45,465,26),12,Palette.MUTED if saved else Palette.CORAL)
+	if not saved:
+		button(p,"Retry save",Rect2(535,dimensions.y-44,135,27),show_completion)
 
 func next_expedition() -> void:
 	session.next_board()
@@ -1035,7 +1096,7 @@ func _input(event: InputEvent) -> void:
 	if event.keycode == KEY_F11:
 		settings.fullscreen = not settings.fullscreen
 		apply_settings()
-		store.write_settings(settings)
+		save_settings()
 		get_viewport().set_input_as_handled()
 		return
 	if event.keycode == KEY_F10:
@@ -1090,6 +1151,7 @@ func _input(event: InputEvent) -> void:
 			elif event.keycode == KEY_DOWN:
 				n = mini(b.cells.size()-1,n+b.width)
 			board_view.keyboard_cell = n
+		board_view.ensure_cell_visible(board_view.keyboard_cell)
 		get_viewport().gui_release_focus()
 	elif event.keycode in [KEY_SPACE,KEY_ENTER] and board_view.keyboard_cell >= 0:
 		on_cell(board_view.keyboard_cell,false,true)
@@ -1122,7 +1184,7 @@ func quit_game() -> void:
 		button(p,"Retry save",Rect2(243,305,185,53),quit_game)
 		button(p,"Quit without saving",Rect2(448,305,190,53),func(): get_tree().quit())
 		return
-	store.write_settings(settings)
+	save_settings()
 	if not OS.has_feature("web"):
 		get_tree().quit()
 	else:
