@@ -20,6 +20,10 @@ func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_STOP
 	focus_mode = FOCUS_ALL
 	mouse_default_cursor_shape = CURSOR_POINTING_HAND
+	mouse_exited.connect(func():
+		hovered = ""
+		queue_redraw()
+	)
 
 func center_for(id: String) -> Vector2:
 	return size/2 + pan + Content.tree_position(Content.upgrade(id))*zoom
@@ -45,8 +49,6 @@ func _gui_input(event: InputEvent) -> void:
 		var next := node_at(event.position)
 		if next != hovered:
 			hovered = next
-			if hovered != "":
-				selected.emit(hovered)
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
 			zoom = minf(1.4,zoom+0.1)
@@ -124,14 +126,22 @@ func _draw() -> void:
 		var p := center_for(item.id)
 		var owned := session.has(item.id)
 		var ready := session.unlock_reason(item) == "READY TO INSTALL"
-		var lit: bool = hovered == item.id or chosen == item.id
+		var is_selected: bool = chosen == item.id
+		var is_hovered: bool = hovered == item.id
+		var lit: bool = is_hovered or is_selected
 		var color := Palette.MINT if lit else (Palette.WHITE if owned else Palette.MUTED)
 		var radius := (33 if item.id=="lens" else 25)*zoom
 		var rect := Rect2(p-Vector2.ONE*radius,Vector2.ONE*radius*2)
 		draw_rect(Rect2(rect.position+Vector2(2,4),rect.size),Color(0,0,0,0.25))
-		draw_style_box(Palette.surface(Palette.PANEL_LIGHT if owned or lit else Palette.PANEL,not owned),rect)
-		if lit:
-			draw_rect(rect.grow(3),Palette.MINT,false,1.5)
+		draw_style_box(Palette.surface(Palette.PANEL_LIGHT.lightened(0.12) if is_hovered else (Palette.PANEL_LIGHT if owned or is_selected else Palette.PANEL),not owned and not is_selected),rect)
+		if is_selected:
+			draw_rect(rect.grow(4),Palette.INK,false,4)
+			draw_rect(rect.grow(4),Palette.MINT,false,2)
+			# Fixed corner tabs distinguish selection from hover and ownership.
+			for corner in [rect.position,Vector2(rect.end.x,rect.position.y),rect.end,Vector2(rect.position.x,rect.end.y)]:
+				draw_rect(Rect2(corner-Vector2(2,2),Vector2(4,4)),Palette.WHITE)
+		elif is_hovered:
+			draw_rect(rect.grow(2),Color(Palette.WHITE,0.65),false,1)
 		draw_circle(p,radius*0.74,Palette.GLASS)
 		UpgradeIcons.draw(self,item.id,p+Vector2(0,1.5),maxf(18,29*zoom),Palette.INK)
 		UpgradeIcons.draw(self,item.id,p,maxf(18,29*zoom),color if owned or ready or lit else color.darkened(0.3))
@@ -139,7 +149,7 @@ func _draw() -> void:
 			draw_rect(Rect2(p+Vector2(radius-4,radius-4),Vector2(4,4)),Palette.MINT)
 		elif ready:
 			draw_circle(p+Vector2(radius-2,-radius+2),3,Palette.GOLD)
-		if lit:
+		if is_selected:
 			var text_width := font.get_string_size(item.name,HORIZONTAL_ALIGNMENT_LEFT,-1,15).x
 			draw_string_outline(font,p+Vector2(-text_width/2,radius+25),item.name,HORIZONTAL_ALIGNMENT_LEFT,-1,15,5,Palette.INK)
 			draw_string(font,p+Vector2(-text_width/2,radius+25),item.name,HORIZONTAL_ALIGNMENT_LEFT,-1,15,Palette.WHITE)
