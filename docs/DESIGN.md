@@ -15,7 +15,7 @@ An abandoned planetary survey network wakes up one patch of land at a time. The 
 - Target content duration: approximately three hours for a fast player, before optional mastery trials, varying with puzzle skill and automation choices. Measure actions and simulated pacing; do not claim human duration was verified without human sessions.
 
 ## Unfolding and power
-- A fresh game shows a 6 × 5 field and Pause. Pulse appears after the first opening; currencies and Grow appear after the first clear. Equipment controls exist only when owned. Atlas appears after the first region.
+- A fresh game shows a 6 × 5 field, Pause and an optional Legend. Pulse appears after the first opening; currencies and Grow appear after the first clear. Equipment controls exist only when owned. Atlas appears after the first region.
 - After the first Lens purchase, one core buys either Crossbeam or Scout immediately. The next clear can fund the other. The tree shows only owned nodes and reachable nodes at the current milestone.
 - The old permanent shop and regional sidebar are gone. Hover reveals clue/tool information. The separate zoomable tree reveals nearby nodes as connections are acquired; descriptions and animated demonstrations are contextual.
 - Fifty nodes form six branching routes from a central lens: beams, fleet, energy, craft, discovery and alchemy. Prerequisites and site milestones govern discovery; resources govern purchase order. Branches are not mutually exclusive.
