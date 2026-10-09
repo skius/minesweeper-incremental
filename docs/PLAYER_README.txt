@@ -26,6 +26,12 @@ All artwork and audio are procedural. The source project includes the geometric
 art and oscillator synthesis code. Godot and third-party library licences are
 available from Credits > Engine & library licences.
 
+WHAT'S NEW IN 1.2.1
+Open the field Legend (or press L) for a visual key to the symbols you have
+encountered. Equipment has a centred dock, separate prices and reactive icons.
+Crystal pockets and plating have matching dimensional markers in the legend
+and the field. Reward numbers stay clear of clue tiles.
+
 WHAT'S NEW IN 1.2
 The first clear offers a beam or a scout. Future discoveries stay hidden until
 they are reachable. All fifty discoveries have distinct procedural symbols and

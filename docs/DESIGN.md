@@ -26,6 +26,8 @@ An abandoned planetary survey network wakes up one patch of land at a time. The 
 - New late-game behavior includes autonomous descent, eight-drone overdrive, row-and-column beams, 7 × 7 bursts and chain carryover. Site transitions still belong to the player. No real-time waiting gate is used to manufacture campaign length.
 
 ## Presentation
+
+The field, currency display and equipment dock share a horizontal centre axis. The dock sits sixteen logical pixels below the field, with separate icon and price rows and at least eight pixels between tool controls. Mounted symbols respond within their own bounds. Resource totals appear by the currency display so they cannot obscure clues. The optional field legend (button or L) uses the actual installed Pulse glyph, corner crystals and metal plate layers, and shows only encountered concepts.
 Readable clues take precedence over effects. Reveals have a staggered lift, mint edge glints, musical intervals and travelling resource motes. Flags spring into place. Abilities trace geometric paths. Completion produces a board-wide light wave and a brief celebratory chord. Upgrades visibly add or change a tool or drone.
 
 ## Research applied

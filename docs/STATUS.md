@@ -1,5 +1,8 @@
 # Delivery state — Afterlight 1.2
 
+## Active UI revision 1.2.1
+Player feedback identified inconsistent control spacing and unclear field symbols. The interface now uses explicit viewport geometry, a centred equipment dock with separate icon/price rows, mounted tool glyphs, dimensional crystals and layered metal plates. An optional field legend (button or L) explains encountered symbols using the same drawings, including the safe-ground counter. Resource totals animate beside currency instead of covering clues. A stale discovery selection after restart is clamped to a visible node. Current checks: 89,764 rule/save assertions and 508 native checks with 50 viewport captures. The independent visual review reports no remaining overlap in the reviewed states. Legend samples now match installed equipment and actual tile-corner markers, with larger body text. Final exports are being refreshed. Prior 1.2 build below is superseded once the new export is packaged.
+
 The 1.2 revision is implemented, tested, exported and packaged on `codex/afterlight`. Main remains unchanged pending player approval. The source build is `4e5bd6c`; subsequent changes are verification documentation. The requested refinement deadline of 9 October 2026, 10:00 CEST has passed. No timer or scheduled automation was used.
 
 ## Build

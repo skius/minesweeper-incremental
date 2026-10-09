@@ -20,15 +20,36 @@ static var control_cache: Dictionary = {}
 const CLUES = [Color("779797"),Color("83c9ed"),Color("92dbb0"),Color("efad7b"),Color("bfa8eb"),Color("ed9bb7"),Color("e1d08b"),Color("eeeecc"),Color("ffffff")]
 
 static func plating(canvas: CanvasItem, center: Vector2, tile: float, layers: int, color: Color) -> void:
-	# Six separate laminations: every drilling hit removes a visible layer.
-	var pitch := maxf(2,floorf(tile*0.085))
-	var width := maxf(8,floorf(tile*0.35))
-	var thickness := maxf(1,floorf(pitch*0.55))
-	for layer in range(clampi(layers,0,6)):
-		var at := (center+Vector2(-width/2,pitch*2.5-layer*pitch)).round()
-		canvas.draw_rect(Rect2(at,Vector2(width,thickness)),color)
-		if tile>=32:
-			canvas.draw_line(at+Vector2(0,thickness),at+Vector2(width,thickness),color.lightened(0.3),1)
+	# A stack of metal laminations, rather than unrelated stripes on a tile.
+	var count := clampi(layers,0,6)
+	if count==0:
+		return
+	var pitch := maxf(2,floorf(tile*0.075))
+	var width := maxf(10,floorf(tile*0.48))
+	var height := count*pitch+2
+	var at := (center-Vector2(width,height)/2).round()
+	canvas.draw_rect(Rect2(at+Vector2(1,2),Vector2(width,height)),INK)
+	canvas.draw_rect(Rect2(at,Vector2(width,height)),color.darkened(0.32))
+	for layer in range(count):
+		var top := at+Vector2(1,1+layer*pitch)
+		canvas.draw_rect(Rect2(top,Vector2(width-2,maxf(1,pitch-1))),color.lightened(0.38))
+	# The two fasteners belong to the plate; they scale with its body.
+	if tile>=30:
+		for x in [2,width-3]:
+			canvas.draw_rect(Rect2(at+Vector2(x,1),Vector2.ONE),WHITE)
+
+static func crystal(canvas: CanvasItem, center: Vector2, extent: float) -> void:
+	var r := extent*0.5
+	var top := center+Vector2(0,-r)
+	var left := center+Vector2(-r*0.72,-r*0.05)
+	var right := center+Vector2(r*0.72,-r*0.05)
+	var bottom := center+Vector2(0,r)
+	var middle := center+Vector2(0,r*0.08)
+	canvas.draw_colored_polygon(PackedVector2Array([top+Vector2(0,2),right+Vector2(0,2),bottom+Vector2(0,2),left+Vector2(0,2)]),INK)
+	canvas.draw_colored_polygon(PackedVector2Array([top,left,middle]),Color("fff1b9"))
+	canvas.draw_colored_polygon(PackedVector2Array([top,right,middle]),GOLD)
+	canvas.draw_colored_polygon(PackedVector2Array([left,middle,bottom]),Color("d89a4b"))
+	canvas.draw_colored_polygon(PackedVector2Array([middle,right,bottom]),Color("9e6339"))
 
 static func box(color: Color, radius: int = 12, border: Color = Color.TRANSPARENT, border_width: int = 1) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
@@ -122,6 +143,8 @@ static func raster_line(image: Image, start: Vector2i, finish: Vector2i, color: 
 static func icon(canvas: CanvasItem, kind: String, center: Vector2, size_value: float, color: Color) -> void:
 	var r := size_value * 0.5
 	match kind:
+		"prism":
+			crystal(canvas,center,size_value)
 		"zoom_in","zoom_out","zoom_fit":
 			if kind=="zoom_fit":
 				for x in [-1,1]:

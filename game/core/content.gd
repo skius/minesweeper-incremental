@@ -1,7 +1,7 @@
 class_name Content
 extends RefCounted
 
-const VERSION = "1.2.0"
+const VERSION = "1.2.1"
 const REGION_LENGTH = 16
 const CAMPAIGN_LENGTH = 96
 # Width, height, density, plating, terrain. Each optional pair offers a compact

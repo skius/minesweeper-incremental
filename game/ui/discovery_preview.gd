@@ -61,7 +61,7 @@ func _draw() -> void:
 			elif plates>0:
 				Palette.plating(self,rect.get_center(),unit,plates,Color("42556f"))
 		if board.pockets[i]>0 and (state==MineBoard.OPEN or (demo.id=="compass" and progress>0)):
-			Palette.icon(self,"prism",rect.position+Vector2(rect.size.x-4,4),5,Palette.GOLD)
+			Palette.crystal(self,rect.position+Vector2(rect.size.x-5,5),8)
 		if demo.marks.has(i) and progress>0:
 			draw_rect(rect,Color(focus_color,0.6),false,1)
 		if order>=0 and progress>0 and progress<0.9:

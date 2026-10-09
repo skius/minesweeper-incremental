@@ -127,36 +127,42 @@ func layout_ui() -> void:
 	var extra := size-Vector2(1440,900)
 	scenery.size=size
 	toast_layer.position=Vector2(extra.x/2,0)
-	for child in ui.get_children():
-		if not child is Control:
-			continue
-		if not child.has_meta("base_rect"):
-			child.set_meta("base_rect",Rect2(child.position,child.size))
-		var base: Rect2=child.get_meta("base_rect")
-		var shift := extra/2
-		if screen=="play":
-			if base.position.x<180:
-				shift.x=0
-			elif base.position.x>=1230:
-				shift.x=extra.x
-			if base.position.y<110:
-				shift.y=0
-			elif base.position.y>=750:
-				shift.y=extra.y
-			if child==board_view and session.index>=3:
-				shift=Vector2.ZERO
-				child.size=base.size+extra
-		child.position=base.position+shift
-	if is_instance_valid(board_view) and hud.has("flag_mode"):
-		hud.flag_mode.position=Vector2(board_view.size.x-73,8)
-	if is_instance_valid(board_view) and hud.has("zoom_in"):
-		for j in range(3):
-			hud[["zoom_out","zoom_fit","zoom_in"][j]].position=Vector2(board_view.size.x-212+j*42,8)
-	if is_instance_valid(board_view) and hud.has("fleet_button"):
-		hud.fleet_button.position=Vector2(board_view.size.x-73,48)
-		hud.fleet_title.position=Vector2(board_view.size.x-119,49)
-		hud.fleet_symbol.position=Vector2(board_view.size.x-153,49)
-		hud.fleet_state.position=Vector2(board_view.size.x-190,51)
+	if screen=="play" and is_instance_valid(board_view):
+		# One measured composition: header, field, 16px breathing room, equipment.
+		var field_width := 752.0 if session.index<3 else size.x-320
+		board_view.position=Vector2((size.x-field_width)/2,128)
+		board_view.size=Vector2(field_width,size.y-316)
+		hud.pause.position=Vector2(size.x-104,32)
+		if hud.has("currency"):
+			hud.currency.position=Vector2((size.x-hud.currency.size.x)/2,32)
+		hud.legend.position=Vector2(field_width-136,board_view.size.y-56)
+		hud.cue.position=Vector2((field_width-hud.cue.size.x)/2,board_view.size.y-57)
+		if hud.has("flag_mode"):
+			hud.flag_mode.position=Vector2(field_width-60,14)
+		if hud.has("zoom_in"):
+			for j in range(3):
+				hud[["zoom_out","zoom_fit","zoom_in"][j]].position=Vector2(field_width-208+j*44,14)
+		if hud.has("fleet_button"):
+			hud.fleet_button.position=Vector2(field_width-60,64)
+			hud.fleet_title.position=Vector2(field_width-96,64)
+			hud.fleet_symbol.position=Vector2(field_width-132,64)
+			hud.fleet_state.position=Vector2(field_width-172,68)
+		if hud.has("equipment"):
+			var dock: Control=hud.equipment
+			dock.position=Vector2((size.x-dock.size.x)/2,board_view.position.y+board_view.size.y+16)
+			var action_y := dock.position.y+dock.size.y-92
+			if hud.has("grow"):
+				hud.grow.position=Vector2(board_view.position.x+field_width-160,action_y)
+			if hud.has("atlas"):
+				hud.atlas.position=Vector2(board_view.position.x,action_y)
+	else:
+		for child in ui.get_children():
+			if not child is Control:
+				continue
+			if not child.has_meta("base_rect"):
+				child.set_meta("base_rect",Rect2(child.position,child.size))
+			var base: Rect2=child.get_meta("base_rect")
+			child.position=base.position+extra/2
 	for child in modal.get_children():
 		if child is ColorRect:
 			child.size=size
@@ -290,6 +296,8 @@ func show_menu() -> void:
 
 func new_game() -> void:
 	session = GameSession.new()
+	tree_selected="lens"
+	board_zoom=1
 	session.events.clear()
 	save_game()
 	start_play()
@@ -332,98 +340,110 @@ func disclosure_stage() -> int:
 	return 1 if session.board.generated else 0
 
 func build_header() -> void:
-	label_at(ui,"AFTERLIGHT / FIELD OS",Rect2(45,31,350,35),18,Palette.WHITE,true)
+	label_at(ui,"AFTERLIGHT / FIELD OS",Rect2(48,32,350,32),18,Palette.WHITE,true)
 	var region_name: String = Content.REGIONS[session.region()].name
-	var title := label_at(ui,region_name,Rect2(45,70,390,29),14,Palette.MUTED)
-	title.tooltip_text = "Site %d of 96" % (session.index+1)
-	if ui_stage >= 2:
-		panel(ui,Rect2(620,28,200 if ui_stage<3 else 300,58),Color("14262a"),28,Color("42605b"))
-		icon(ui,"prism",Rect2(637,42,30,30),Palette.GOLD,22)
-		hud.light = label_at(ui,"",Rect2(676,35,130,38),24,Palette.WHITE,true)
-		if ui_stage >= 3:
-			icon(ui,"core",Rect2(806,43,26,26),Palette.MUTED,20)
-			hud.cores = label_at(ui,"",Rect2(843,38,74,32),20,Palette.MINT,true)
-	symbol_button(ui,"pause",Rect2(1331,29,62,53),show_pause,"Pause · Esc")
+	var title := label_at(ui,region_name,Rect2(48,72,390,24),14,Palette.MUTED)
+	title.tooltip_text="Site %d of 96" % (session.index+1)
+	if ui_stage>=2:
+		var currency := panel(ui,Rect2(0,32,200 if ui_stage<3 else 288,56),Color("14262a"))
+		hud.currency=currency
+		icon(currency,"prism",Rect2(16,12,32,32),Palette.GOLD,28)
+		hud.light=label_at(currency,"",Rect2(60,10,112,36),23,Palette.WHITE,true)
+		if ui_stage>=3:
+			icon(currency,"core",Rect2(188,12,28,32),Palette.MUTED,24)
+			hud.cores=label_at(currency,"",Rect2(228,12,48,32),20,Palette.MINT,true)
+	hud.pause=symbol_button(ui,"pause",Rect2(1336,32,56,56),show_pause,"Pause · Esc")
 
 func build_field() -> void:
-	var early := session.index < 3
-	var rect := Rect2(348,166,744,551) if early else Rect2(178,130,1084,621)
-	board_view = BoardView.new()
-	board_view.position = rect.position
-	board_view.size = rect.size
-	board_view.session = session
-	board_view.motion = settings.motion
-	board_view.high_contrast = settings.contrast
+	board_view=BoardView.new()
+	board_view.position=Vector2(160,128)
+	board_view.size=Vector2(1120,584)
+	board_view.session=session
+	board_view.motion=settings.motion
+	board_view.high_contrast=settings.contrast
 	board_view.zoom=board_zoom if session.index>=3 else 1
 	board_view.zoom_changed.connect(func(value): board_zoom=value)
 	board_view.cell_pressed.connect(on_cell)
 	board_view.cell_hovered.connect(on_hover)
 	ui.add_child(board_view)
+	hud.legend=button(board_view,"Legend",Rect2(0,0,112,32),show_legend)
+	hud.legend.tooltip_text="Field symbols · L"
 	if ui_stage>=1:
-		hud.flag_mode=symbol_button(board_view,"flag",Rect2(rect.size.x-73,8,44,34),toggle_flag_mode,"Flag mode · left click places flags · F")
+		hud.flag_mode=symbol_button(board_view,"flag",Rect2(0,14,36,32),toggle_flag_mode,"Flag mode · left click places flags · F")
 	if session.index>=3:
 		for j in range(3):
 			var kind: String=["zoom_out","zoom_fit","zoom_in"][j]
-			hud[kind]=symbol_button(board_view,kind,Rect2(rect.size.x-212+j*42,8,38,34),func():
+			hud[kind]=symbol_button(board_view,kind,Rect2(0,14,36,32),func():
 				board_view.set_zoom(1 if kind=="zoom_fit" else board_view.zoom+(-0.25 if kind=="zoom_out" else 0.25))
 			,["Zoom out","Show whole field","Zoom in · scroll to zoom\nMiddle-drag or click the overview to pan"][j])
-	var accent := Color(Content.REGIONS[session.region()].color)
 	if session.has("chain"):
-		icon(board_view,"upgrade:chain",Rect2(276,50,28,26),Palette.GOLD,19)
-		hud.chain = label_at(board_view,"",Rect2(309,47,88,30),18,Palette.GOLD,true)
+		icon(board_view,"upgrade:chain",Rect2(272,64,32,32),Palette.GOLD,23)
+		hud.chain=label_at(board_view,"",Rect2(312,64,80,32),18,Palette.GOLD,true)
 	if session.drone_count()>0:
-		hud.fleet_symbol=icon(board_view,"drone",Rect2(rect.size.x-153,49,28,28),Palette.MINT,22)
-		hud.fleet_title = label_at(board_view,str(session.drone_count()),Rect2(rect.size.x-119,49,35,30),18,Palette.MINT,true)
-		var fleet_button := symbol_button(board_view,"pause",Rect2(rect.size.x-73,48,44,32),toggle_drones,"Pause / resume the fleet")
-		hud.fleet_button = fleet_button
-		hud.fleet_state = icon(board_view,"pulse",Rect2(rect.size.x-190,51,26,26),Palette.MUTED,18)
-		hud.fleet_state.mouse_filter = MOUSE_FILTER_PASS
-	if session.tool_available("cross") or session.tool_available("overdrive") or (session.has("oracle") and session.drone_count()>0):
-		var meter := EnergyMeter.new()
-		meter.position=Vector2(555,753)
-		meter.size=Vector2(330,32)
-		meter.motion=settings.motion
-		ui.add_child(meter)
-		hud.energy=meter
+		hud.fleet_symbol=icon(board_view,"drone",Rect2(0,64,32,32),Palette.MINT,26)
+		hud.fleet_title=label_at(board_view,str(session.drone_count()),Rect2(0,64,28,32),18,Palette.MINT,true)
+		hud.fleet_button=symbol_button(board_view,"pause",Rect2(0,64,36,32),toggle_drones,"Pause / resume the fleet")
+		hud.fleet_state=icon(board_view,"pulse",Rect2(0,68,24,24),Palette.MUTED,18)
+		hud.fleet_state.mouse_filter=MOUSE_FILTER_PASS
 	var cue := InputCue.new()
-	cue.position=Vector2(620,732 if early else 841)
-	cue.size=Vector2(200,38)
+	cue.size=Vector2(200,36)
 	cue.motion=settings.motion
-	ui.add_child(cue)
+	board_view.add_child(cue)
 	hud.cue=cue
-	if ui_stage >= 2:
-		var tree_button := button(ui,"",Rect2(1232,777,162,72),show_tree)
-		icon(tree_button,"tree",Rect2(8,19,43,36),Palette.MINT,30)
-		label_at(tree_button,"Grow",Rect2(58,20,90,32),21,Palette.WHITE,true)
-		tree_button.tooltip_text = "Discover upgrades · Tab"
-		hud.grow = tree_button
-	if session.index >= 16:
-		var map_button := button(ui,"Atlas",Rect2(46,798,111,42),show_records)
-		map_button.tooltip_text = "Regions, records and optional mastery trials"
+	if ui_stage>=2:
+		var tree_button := button(ui,"",Rect2(0,0,160,80),show_tree)
+		icon(tree_button,"tree",Rect2(16,20,40,40),Palette.MINT,32)
+		label_at(tree_button,"Grow",Rect2(68,23,76,34),21,Palette.WHITE,true)
+		tree_button.tooltip_text="Discover upgrades · Tab"
+		hud.grow=tree_button
+	if session.index>=16:
+		hud.atlas=button(ui,"Atlas",Rect2(0,0,128,80),show_records)
+		hud.atlas.tooltip_text="Regions, records and optional mastery trials"
 
 func build_tools() -> void:
-	if ui_stage == 0:
+	if ui_stage==0:
 		return
-	var ids: Array[String] = ["probe"]
+	var ids: Array[String]=["probe"]
 	for id in ["cross","line","nova","overdrive"]:
 		if session.tool_available(id):
 			ids.append(id)
-	var width_value := ids.size()*83.0
+	var completed := session.layer_ready or session.finished
+	var has_energy := not completed and (session.tool_available("cross") or session.tool_available("overdrive") or (session.has("oracle") and session.drone_count()>0))
+	var row_width := ids.size()*80.0+(ids.size()-1)*8.0
+	var dock_width := 280.0 if completed else maxf(176,row_width+24)
+	if has_energy:
+		dock_width=maxf(288,dock_width)
+	var dock_height := 144.0 if has_energy else 104.0
+	var dock := panel(ui,Rect2(0,0,dock_width,dock_height),Palette.PANEL)
+	hud.equipment=dock
+	var row_y := dock_height-92
+	if has_energy:
+		var meter := EnergyMeter.new()
+		meter.position=Vector2(12,12)
+		meter.size=Vector2(dock_width-24,28)
+		meter.motion=settings.motion
+		dock.add_child(meter)
+		hud.energy=meter
+	if completed:
+		hud.descend=button(dock,"Descend ↓" if session.layer_ready else "Site restored →",Rect2(12,12,256,80),descend_or_complete,true)
+		return
 	for j in range(ids.size()):
-		var id: String = ids[j]
-		var b := button(ui,"",Rect2(720-width_value/2+j*83,789,70,65),func(): select_tool(id))
-		icon(b,tool_symbol(id),Rect2(16,14,38,38),Palette.MINT,29)
-		label_at(b,str({"probe":1,"cross":2,"line":3,"nova":4,"overdrive":5}[id]),Rect2(6,1,20,19),10,Palette.MUTED)
-		b.tooltip_text = tool_help(id)
-		tool_buttons[id] = b
-		hud["charge_"+id] = label_at(b,"",Rect2(39,44,28,18),11,Palette.GOLD)
+		var id: String=ids[j]
+		var b := button(dock,"",Rect2((dock_width-row_width)/2+j*88,row_y,80,80),func(): select_tool(id))
+		var glyph := icon(b,tool_symbol(id),Rect2(16,6,48,48),Palette.MINT,33)
+		glyph.mounted=true
+		glyph.motion=settings.motion
+		var shortcut := label_at(b,str({"probe":1,"cross":2,"line":3,"nova":4,"overdrive":5}[id]),Rect2(6,4,16,20),14,Palette.MUTED)
+		shortcut.tooltip_text="Keyboard shortcut"
+		b.tooltip_text=tool_help(id)
+		tool_buttons[id]=b
+		hud["charge_"+id]=label_at(b,"",Rect2(36,57,38,20),14,Palette.GOLD)
 		if id!="probe":
-			icon(b,"energy",Rect2(26,47,11,12),Palette.GOLD,11)
-	if session.layer_ready or session.finished:
-		for b in tool_buttons.values():
-			b.visible = false
-		var next_button := button(ui,"Descend ↓" if session.layer_ready else "Site restored →",Rect2(602,786,236,66),descend_or_complete,true)
-		hud.descend = next_button
+			icon(b,"energy",Rect2(18,59,14,16),Palette.GOLD,14)
+		else:
+			hud["charge_"+id].position=Vector2(6,57)
+			hud["charge_"+id].size=Vector2(68,20)
+			hud["charge_"+id].horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
 
 func tool_symbol(id: String) -> String:
 	match id:
@@ -479,12 +499,13 @@ func update_hud() -> void:
 		meter.visible=not session.layer_ready and not session.finished
 		var target := board_view.keyboard_cell if board_view.keyboard_cell>=0 else board_view.hover
 		if selected_tool!="" and selected_tool!="probe":
-			meter.cost=session.effective_tool_cost(selected_tool,target) if target>=0 else session.minimum_tool_cost(selected_tool)
+			meter.cost=session.effective_tool_cost(selected_tool,target) if target>=0 else session.tool_cost(selected_tool)
 	var b := session.board
 	if hud.has("chain"):
 		hud.chain.text = "×%d" % session.multiplier()
 		hud.chain.tooltip_text = "Manual chain: %d. No timer." % session.chain
-	hud.cue.visible = not session.finished and not session.layer_ready and (selected_tool!="" or settings.flag_mode or (session.index==0 and session.manual_actions<4))
+	var inspect_cell: int=board_view.keyboard_cell if board_view.keyboard_cell>=0 else board_view.hover
+	hud.cue.visible = not session.finished and not session.layer_ready and inspect_cell<0 and session.index==0 and session.manual_actions<4
 	hud.cue.mode = "aim" if selected_tool!="" else ("flag" if b.generated or settings.flag_mode else "reveal")
 	hud.cue.keyboard = board_view.keyboard_cell>=0
 	hud.cue.tooltip_text = "Aim · Esc cancels" if selected_tool!="" else ("Flag · right mouse / F" if b.generated else "Reveal · left mouse / Enter")
@@ -493,11 +514,17 @@ func update_hud() -> void:
 		var running: bool=id=="overdrive" and session.overdrive_seconds>0
 		btool.disabled = running or (session.probe_charge<1 if id=="probe" else session.energy<session.minimum_tool_cost(id)) or session.finished or session.layer_ready
 		var caption: Label = hud["charge_"+id]
-		caption.text = str(int(session.probe_charge)) if id=="probe" and session.has("reservoir") else ("%ds" % ceili((1-session.probe_charge)*9) if id=="probe" and session.probe_charge<1 else (str(int(session.tool_cost(id))) if id!="probe" else ""))
+		if id=="probe":
+			caption.text="%ds" % ceili((1-session.probe_charge)*9) if session.probe_charge<1 else ("FREE · %d" % int(session.probe_charge) if session.has("reservoir") else "FREE")
+		else:
+			var price: float=session.effective_tool_cost(id,inspect_cell) if selected_tool==id and inspect_cell>=0 else session.tool_cost(id)
+			caption.text=str(int(price)) if is_equal_approx(price,roundf(price)) else "%.1f" % price
 		if running:
 			caption.text="%ds" % ceili(session.overdrive_seconds)
 		var tool_glyph := btool.get_child(0) as Glyph
 		tool_glyph.color=Palette.GOLD if running else Palette.MINT
+		tool_glyph.armed=selected_tool==id or running
+		tool_glyph.motion=settings.motion
 		tool_glyph.recharge=clampf(session.probe_charge,0,1) if id=="probe" else -1
 		tool_glyph.queue_redraw()
 		btool.add_theme_stylebox_override("normal",Palette.surface(Palette.MINT.darkened(0.55) if selected_tool==id else Palette.PANEL_LIGHT,selected_tool!=id))
@@ -527,8 +554,10 @@ func show_tree() -> void:
 	upgrade_tree.size = Vector2(992,713)
 	upgrade_tree.session = session
 	upgrade_tree.motion = settings.motion
+	if not upgrade_tree.visible_node(Content.upgrade(tree_selected)):
+		tree_selected="lens"
 	upgrade_tree.chosen = tree_selected
-	upgrade_tree.zoom = 0.55 if session.index>25 else 0.92
+	upgrade_tree.zoom = 0.7 if session.index>25 else 0.92
 	upgrade_tree.selected.connect(tree_focus)
 	upgrade_tree.activate.connect(purchase_upgrade)
 	p.add_child(upgrade_tree)
@@ -568,8 +597,9 @@ func tree_focus(id: String) -> void:
 	preview.motion = settings.motion
 	tree_detail.add_child(preview)
 	icon(tree_detail,"upgrade:"+id,Rect2(0,275,45,48),Palette.MINT,38)
-	paragraph(tree_detail,item.name,Rect2(60,274,250,80),26,Palette.WHITE)
-	paragraph(tree_detail,item.desc,Rect2(0,361,302,92),18,Palette.MUTED)
+	var name_label := paragraph(tree_detail,item.name,Rect2(60,274,250,72),25,Palette.WHITE)
+	var description_y := 274+maxf(48,name_label.get_minimum_size().y)+16
+	paragraph(tree_detail,item.desc,Rect2(0,description_y,302,112),18,Palette.MUTED)
 	var reason := session.unlock_reason(item)
 	var owned := session.has(id)
 	if owned:
@@ -668,8 +698,9 @@ func consume_events() -> void:
 				var visible: Array=event.cells.filter(func(cell): return board_view.visible_cell(cell))
 				if event.amount > 0 and not visible.is_empty():
 					var p := board_view.position+board_view.cell_position(visible[0])
-					effects.popup(p,"+%d" % event.amount,Palette.MINT)
-					effects.burst(p,Palette.MINT,mini(event.cells.size()*2+3,18),hud.light.position+Vector2(-24,19) if hud.has("light") else Vector2(-1,-1))
+					var reward_at := Vector2(hud.currency.global_position.x+hud.currency.size.x+48,67) if hud.has("currency") else board_view.global_position+Vector2(220,board_view.size.y-32)
+					effects.popup(reward_at,"+%d" % event.amount,Palette.MINT)
+					effects.burst(p,Palette.MINT,mini(event.cells.size()*2+3,18),hud.light.global_position+Vector2(-24,19) if hud.has("light") else Vector2(-1,-1))
 					audio.play("reveal",pow(2,float(mini(event.chain,16)%5)/12))
 			"excavate":
 				var p := board_view.position+board_view.cell_position(event.cell)
@@ -703,6 +734,8 @@ func consume_events() -> void:
 				audio.play("pocket")
 			"tool":
 				audio.play("tool")
+				if tool_buttons.has(event.id):
+					(tool_buttons[event.id].get_child(0) as Glyph).pulse=1
 				var p := board_view.position+board_view.size/2 if event.cell < 0 else board_view.position+board_view.cell_position(event.cell)
 				if event.cell<0 or board_view.visible_cell(event.cell):
 					effects.ring(p,Palette.MINT)
@@ -813,8 +846,8 @@ func dialog(title: String, dimensions: Vector2, kind: String) -> Panel:
 	var p := panel(modal,Rect2((size-dimensions)/2,dimensions),Palette.PANEL,5,Color("9aa5b7"))
 	panel(p,Rect2(5,5,dimensions.x-10,76),Color("526e9b"),0,Color("869dbc"))
 	p.mouse_filter = MOUSE_FILTER_STOP
-	label_at(p,title,Rect2(38,28,dimensions.x-125,50),30,Palette.WHITE,true)
-	var close_button := symbol_button(p,"close",Rect2(dimensions.x-71,31,38,38),back_modal,"Back · Esc" if not modal_history.is_empty() else "Close · Esc")
+	label_at(p,title,Rect2(38,18,dimensions.x-125,50),30,Palette.WHITE,true)
+	var close_button := symbol_button(p,"close",Rect2(dimensions.x-71,24,38,38),back_modal,"Back · Esc" if not modal_history.is_empty() else "Close · Esc")
 	close_button.grab_focus()
 	rule(p,Vector2(38,87),dimensions.x-76)
 	if board_view:
@@ -846,7 +879,7 @@ func back_modal() -> void:
 	close_modal()
 	while not history.is_empty():
 		var previous: String=history.pop_back()
-		var action: Callable={"pause":show_pause,"settings":show_settings,"guide":show_guide,"records":show_records,"credits":show_credits,"licenses":show_licenses,"complete":show_completion,"tree":show_tree}.get(previous,Callable())
+		var action: Callable={"pause":show_pause,"settings":show_settings,"guide":show_guide,"records":show_records,"credits":show_credits,"licenses":show_licenses,"complete":show_completion,"tree":show_tree,"legend":show_legend}.get(previous,Callable())
 		if action.is_valid():
 			action.call()
 			modal_history.assign(history)
@@ -879,14 +912,14 @@ func show_settings() -> void:
 	for i in range(3):
 		label_at(p,names[i],Rect2(38,113+i*71,230,32),18,Palette.WHITE)
 		var slider := HSlider.new()
-		slider.position = Vector2(289,123+i*71)
+		slider.position = Vector2(289,117+i*71)
 		slider.size = Vector2(284,24)
 		slider.min_value = 0
 		slider.max_value = 1
 		slider.step = 0.05
 		slider.value = settings[keys[i]]
 		slider.tooltip_text="0 removes shake, drifting and reveal movement" if keys[i]=="motion" else names[i]
-		var value_label := label_at(p,"%d%%" % roundi(slider.value*100),Rect2(594,115+i*71,65,32),16,Palette.MINT)
+		var value_label := label_at(p,"%d%%" % roundi(slider.value*100),Rect2(594,113+i*71,65,32),16,Palette.MINT)
 		slider.value_changed.connect(func(value):
 			settings[keys[i]] = value
 			value_label.text = "%d%%" % roundi(value*100)
@@ -951,6 +984,44 @@ func show_guide(page: int = 0) -> void:
 	paragraph(p,heading,Rect2(378,195,399,65),25,Palette.WHITE)
 	paragraph(p,text_value,Rect2(378,289,392,255),17,Palette.MUTED)
 	label_at(p,"Arrows: select   Enter: reveal   F: flag   Tab: grow   Esc: pause",Rect2(38,580,750,28),14,Palette.MUTED)
+
+func show_legend() -> void:
+	if session==null or screen!="play":
+		return
+	var entries: Array[Dictionary]=[
+		{"id":"clue","title":"Clue","text":"Nearby charges, including diagonal tiles."},
+		{"id":"flag","title":"Flag","text":"Your guess at a charge. Flags can be wrong."},
+		{"id":"counter","title":"Safe ground","text":"Safe tiles opened / total safe tiles."}
+	]
+	if session.board.generated:
+		entries.append({"id":"pulse","title":"Pulse","text":"Opens safe ground. Recharges for free."})
+	else:
+		entries.append({"id":"start","title":"Starting signal","text":"Suggested opening. Any first click is safe."})
+	if session.index>0 or session.board.pockets.count(1)>0:
+		entries.append({"id":"crystal","title":"Crystal pocket","text":"Bonus light. Compass spots buried pockets." if session.has("compass") else "Uncover for bonus light and upgrade effects."})
+	if session.board.crust>0:
+		entries.append({"id":"plating","title":"Plating","text":"Drill safe ground to remove its metal layers."})
+	if hud.has("energy"):
+		entries.append({"id":"energy","title":"Tool energy","text":"Gold prices use energy. Safe work refills it."})
+	if session.drone_count()>0:
+		entries.append({"id":"drone","title":"Scout fleet","text":"Solves clues; spends energy if logic stalls." if session.has("oracle") else "Solves clues; may need a new opening."})
+	var rows := ceili(entries.size()/2.0)
+	var p := dialog("Field legend",Vector2(800,176+rows*128),"legend")
+	for i in range(entries.size()):
+		var entry: Dictionary=entries[i]
+		var card := panel(p,Rect2(32+(i%2)*376,104+(i/2)*128,360,112),Palette.PANEL_LIGHT)
+		var sample := LegendSample.new()
+		sample.position=Vector2(8,16)
+		sample.size=Vector2(80,80)
+		sample.kind=entry.id
+		sample.pulse_symbol=tool_symbol("probe")
+		sample.covered_crystal=session.has("compass")
+		sample.motion=settings.motion
+		card.add_child(sample)
+		label_at(card,entry.title,Rect2(104,12,240,28),19,Palette.WHITE,true)
+		paragraph(card,entry.text,Rect2(104,45,240,59),17,Palette.MUTED)
+	button(p,"Back to field",Rect2(576,p.size.y-56,192,40),close_modal,true)
+	label_at(p,"L  ·  Field symbols",Rect2(32,p.size.y-53,320,32),14,Palette.MUTED)
 
 func show_region(number: int) -> void:
 	var data: Dictionary = Content.REGIONS[number]
@@ -1113,10 +1184,18 @@ func _input(event: InputEvent) -> void:
 			show_pause()
 		get_viewport().set_input_as_handled()
 		return
+	if event.keycode==KEY_L and modal_kind=="legend":
+		back_modal()
+		get_viewport().set_input_as_handled()
+		return
 	if modal_kind != "":
 		return
 	if event.keycode == KEY_TAB and screen=="play":
 		show_tree()
+		get_viewport().set_input_as_handled()
+		return
+	if event.keycode == KEY_L and screen=="play":
+		show_legend()
 		get_viewport().set_input_as_handled()
 		return
 	if event.keycode == KEY_F1:
@@ -1215,6 +1294,10 @@ func release_smoke() -> void:
 	await smoke_click(board_view.position+board_view.cell_position(27))
 	ok = ok and session.board.generated and session.strikes == 0
 	await smoke_capture("release-field")
+	await smoke_click(hud.legend.global_position+hud.legend.size/2)
+	ok = ok and modal_kind=="legend" and modal.find_children("*","LegendSample",true,false).size()>0
+	await smoke_capture("release-legend")
+	close_modal()
 	save_game()
 	var loaded := store.load_session()
 	ok = ok and loaded != null and loaded.board.cells == session.board.cells
@@ -1231,7 +1314,7 @@ func release_smoke() -> void:
 	await smoke_capture("release-settings")
 	show_licenses()
 	await smoke_capture("release-licences")
-	print("AFTERLIGHT %s: exported build boots, renders, buys a tree node and reloads saves; editor=%s" % ["PASS" if ok else "FAIL",str(OS.has_feature("editor"))])
+	print("AFTERLIGHT %s: exported build boots, renders the legend, buys a tree node and reloads saves; editor=%s" % ["PASS" if ok else "FAIL",str(OS.has_feature("editor"))])
 	get_tree().quit(0 if ok else 1)
 
 func smoke_capture(filename: String) -> void:
