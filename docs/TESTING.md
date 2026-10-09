@@ -1,23 +1,27 @@
 # Validation
 
-`tools/run.ps1` is the shared entry point. Set `GODOT_EXE` (or use `.env.local`).
+`tools/run.ps1` resolves the supplied engine from `GODOT_EXE` or `.env.local`; do not install another engine.
 
-- `import`: refresh Godot imports and class cache, headless.
-- `test`: pure rules and persistence regression suite, headless.
-- `shots`: deterministic native visual/input sessions on an isolated Windows desktop. Godot captures its own viewport; no desktop capture is used.
-- `play`: launch the normal game, visible with audio.
+- `import`: refresh imports and class cache, headless.
+- `test`: rules, persistence, malformed-save corpus, terrain and truthful upgrade preview regressions, headless.
+- `shots`: native visual/input session on an isolated Windows desktop. Godot captures its viewport; no desktop capture is used.
+- `balance`: three complete campaign policies, with one- and three-second decision intervals. The bounded engine timeout is fifteen minutes.
+- `power`: three equipment tiers on an identical plated stratum.
+- `trials`: visible-information completion and equipment-isolation checks for all twelve optional trials.
+- `play`: normal visible game launch with audio.
 
-Test artefacts belong in ignored `test_runs/`. Every test run has its own log. Script errors, missing completion markers, nonzero exit codes and timeouts fail a run. Tests select an isolated save path via user arguments; the normal save is never read or overwritten.
+Test artefacts belong in ignored `test_runs/`. Every mode writes its own log. Script errors, missing completion markers, nonzero exit codes and timeouts fail the run. Test saves are isolated with `--test-data`; the normal save is never read or overwritten. Native tests use dummy audio and a separate Windows desktop. The launcher owns the process handle and stops only that process on timeout.
 
-Screenshots require a rendering device; headless mode cannot validate presentation. Always inspect the resulting PNGs. Record actual results and limitations in `docs/QA.md`.
+Screenshots require a rendering device. Inspect meaningful PNG states after `shots`; headless tests do not validate presentation. The current session covers 45 captures, including ten contact sheets showing all fifty real-rule upgrade demonstrations before and after. Resolutions include 960×600, 1440×900, 1920×1080 and 1600×720. Native checks exercise pointer/keyboard controls, modal isolation, zoom/pan targeting, save retry paths, settings and trial controls. The late-game 180-frame sample writes `test_runs/performance_v2.json`.
 
-The visual harness also checks settings persistence, pause isolation, keyboard focus, local reports, readable text bounds and 960×600 / 1920×1080 layouts. A 180-frame late-game sample writes `test_runs/performance.json`.
+`tests/player_policy.gd` reads visible clues, states and public plating, never the hidden mine map. `balance_v2.json` records complete campaigns and purchase timing; `power_curve.json` records fixed-work comparisons. Simulated duration does not establish human enjoyment or a guaranteed human minimum playtime.
 
-`tools/hidden_run.py --scenario manual` exposes a development-only local command file and returns only visible clues for visual decision play. It keeps an action history; no hidden mine information is exposed.
+`tools/hidden_run.py --scenario manual` exposes a development-only local command file. It returns visible clues and viewport captures for agent-directed play, loads only the isolated save, and persists its action history after each capture. This is not an independent human playtest.
 
-`tools/export.ps1` creates the Windows release. Test the shipped executable with `hidden_run.py --scenario release --engine <exported-exe> --project <export-folder> --log <absolute-log> --data-root <isolated-test-folder>`. Release templates intentionally reject `--path`, so the launcher omits that editor-only argument for this mode. The smoke checks rendering, real input, persistence and library notices from the actual PCK; it refuses to use the player's save directory.
+## Exports
 
-## Revision 1.1
-`balance` exercises three complete campaigns with one- and three-second policies. It can take several minutes and has a bounded 15-minute engine timeout. `tests/player_policy.gd` contains the common visible-information decision policy; it never reads the mine map.
+`powershell -File tools/export.ps1 -Target 'Windows Desktop'` builds the Windows release and copies the player README. `-Target Web` builds the Compatibility Web export. Run these sequentially because they share `test_runs/export.log`.
 
-`power` runs that policy with three equipment tiers on the same stratum to measure actual power growth. Results are stored in `test_runs/power_curve.json`. The native `shots` pass now captures 27 states and checks all fifty upgrade descriptions. Profiling writes `test_runs/performance_v2.json`.
+Test the shipped executable using `hidden_run.py --scenario release --engine <exported-exe> --project <export-folder> --log <absolute-log> --data-root <isolated-test-folder>`. The launcher omits the editor-only `--path` argument for release templates. The smoke checks rendering, actual input, a tree purchase, persistence and library notices from the exported PCK, and refuses to use normal saves.
+
+The Windows archive must contain exactly `Afterlight.exe`, `Afterlight.pck` and `README.txt`; verify each entry against the exported file. Build files and screenshots remain ignored. Source and verification milestones are committed and pushed to `codex/afterlight`; main stays unchanged pending player approval. Record actual results and limitations in [QA.md](QA.md), and durable delivery state in [STATUS.md](STATUS.md).
