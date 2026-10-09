@@ -8,7 +8,7 @@ in all eight neighbouring tiles. Click a number with enough flags to chord.
 The first opening is safe. Mistakes never take away your earned light.
 
 Pulse (Space or 1) opens guaranteed safe ground and recharges for free.
-Unlock new tools and drones in the workshop. Tools use energy; manual reveals
+Unlock new tools and drones in Grow. Tools use energy; manual reveals
 recharge it. Drones make logical deductions and wait when they need an opening.
 
 Esc pauses. F1 opens the guide. F11 toggles fullscreen. F10 captures a local
@@ -26,11 +26,14 @@ All artwork and audio are procedural. The source project includes the geometric
 art and oscillator synthesis code. Godot and third-party library licences are
 available from Credits > Engine & library licences.
 
-WHAT'S NEW IN 1.1
-A modern retro desktop; a small opening with gradually revealed controls;
-hover help and animated upgrade demonstrations; fifty branching discoveries;
-deeper excavation sites, plated ground and stronger late-game automation.
+WHAT'S NEW IN 1.2
+The first clear offers a beam or a scout. Future discoveries stay hidden until
+they are reachable. All fifty discoveries have distinct procedural symbols and
+demonstrations using real game rules. Energy and aimed costs sit beside tools.
+Shelves, shafts and geodes give later excavations different shapes and terrain.
+The layout fills widescreen displays. Scroll over the field to zoom; middle-drag
+or click its overview to pan. The titlebar also has zoom, fit and flag controls.
 Tab opens Grow. Hover nodes for details; drag/scroll to explore the tree.
 After Focused pulse, select Pulse and aim at the desired part of the field.
 A cleared stratum has a Descend button. Enter also descends.
-Existing 1.0 expedition saves remain compatible.
+Existing 1.0 and 1.1 expedition saves remain compatible.

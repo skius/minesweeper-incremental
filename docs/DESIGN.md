@@ -16,10 +16,12 @@ An abandoned planetary survey network wakes up one patch of land at a time. The 
 
 ## Unfolding and power
 - A fresh game shows a 6 × 5 field and Pause. Pulse appears after the first opening; currencies and Grow appear after the first clear. Equipment controls exist only when owned. Atlas appears after the first region.
+- After the first Lens purchase, one core buys either Crossbeam or Scout immediately. The next clear can fund the other. The tree shows only owned nodes and reachable nodes at the current milestone.
 - The old permanent shop and regional sidebar are gone. Hover reveals clue/tool information. The separate zoomable tree reveals nearby nodes as connections are acquired; descriptions and animated demonstrations are contextual.
 - Fifty nodes form six branching routes from a central lens: beams, fleet, energy, craft, discovery and alchemy. Prerequisites and site milestones govern discovery; resources govern purchase order. Branches are not mutually exclusive.
 - Buried plates begin at site 7. Deductions remain classic Minesweeper; a proved-safe plated tile still needs excavation. Manual drilling, fleet chassis and bore lasers break multiple layers. Pulses always penetrate their safe target.
-- Sites deepen from one stratum into up to thirteen. Later boards grow to 25 × 16 with denser charges and up to six plate layers. Upgrades eventually overpower old work; a fixed-stratum benchmark checks this directly.
+- Sites deepen from one stratum into up to thirteen. From site 7, strata alternate wide shelves, tall shafts and square geodes, with coherent plate seams or clustered islands and pockets. Dimensions stay within 26 × 18. Terrain uses its own deterministic random streams and never changes clue arithmetic. Old saves keep their original board generation. Upgrades eventually overpower old work; a fixed-stratum benchmark checks this directly.
+- Field zoom, an overview and keyboard following preserve legibility in small windows. Energy uses the same symbol on storage and tool costs; a selected footprint previews its actual price, including recycling. Upgrade demonstrations are recorded from real miniature game sessions.
 - New late-game behavior includes autonomous descent, eight-drone overdrive, row-and-column beams, 7 × 7 bursts and chain carryover. Site transitions still belong to the player. No real-time waiting gate is used to manufacture campaign length.
 
 ## Presentation

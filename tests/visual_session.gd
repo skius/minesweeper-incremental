@@ -223,8 +223,50 @@ func run(root_app: Control) -> void:
 	var zoom_index: int=app.board_view.keyboard_cell
 	check(app.board_view.index_at(app.board_view.cell_position(zoom_index))==zoom_index,"zoomed coordinates map to the correct board cell")
 	await shot("v3_33_zoomed_field")
+	# Camera gestures must update aim without relying on a later mouse motion.
+	var board_view: BoardView=app.board_view
+	var pointer: Vector2=board_view.grid_origin+Vector2(board_view.visible_columns,board_view.visible_rows)*board_view.tile_size*0.5
+	var wheel := InputEventMouseButton.new()
+	wheel.position=board_view.global_position+pointer
+	wheel.button_index=MOUSE_BUTTON_WHEEL_UP
+	wheel.pressed=true
+	get_viewport().push_input(wheel,true)
+	wheel=wheel.duplicate()
+	wheel.pressed=false
+	get_viewport().push_input(wheel,true)
+	check(board_view.keyboard_cell==-1 and board_view.hover==board_view.index_at(pointer),"wheel zoom reprojects aim and clears stale keyboard target")
+	var clicked: Array[int]=[]
+	var record_click := func(cell: int,_right: bool): clicked.append(cell)
+	board_view.cell_pressed.connect(record_click)
+	var press := InputEventMouseButton.new()
+	press.position=wheel.position
+	press.button_index=MOUSE_BUTTON_RIGHT
+	press.pressed=true
+	get_viewport().push_input(press,true)
+	press=press.duplicate()
+	press.pressed=false
+	get_viewport().push_input(press,true)
+	check(clicked.size()==1 and clicked[0]==board_view.hover,"click after wheel uses the displayed target without an intervening motion")
+	board_view.cell_pressed.disconnect(record_click)
+	board_view.keyboard_cell=zoom_index
+	press=press.duplicate()
+	press.button_index=MOUSE_BUTTON_MIDDLE
+	press.pressed=true
+	get_viewport().push_input(press,true)
+	var pan_motion := InputEventMouseMotion.new()
+	pan_motion.position=press.position+Vector2(board_view.tile_size*2,0)
+	pan_motion.button_mask=MOUSE_BUTTON_MASK_MIDDLE
+	get_viewport().push_input(pan_motion,true)
+	press=press.duplicate()
+	press.position=pan_motion.position
+	press.pressed=false
+	get_viewport().push_input(press,true)
+	check(not board_view.panning and board_view.keyboard_cell==-1 and board_view.hover==board_view.index_at(press.position-board_view.global_position),"middle pan release preserves correct aim without a later motion")
+	board_view.keyboard_cell=zoom_index
+	await click(board_view.global_position+board_view.minimap_rect().get_center())
+	check(board_view.keyboard_cell==-1 and board_view.hover==-1,"overview navigation clears the old board target")
 	await click(app.hud.zoom_fit.global_position+app.hud.zoom_fit.size/2)
-	check(app.board_view.zoom==1 and app.board_view.view_offset==Vector2i.ZERO,"fit control restores the complete field")
+	check(app.board_view.zoom==1 and app.board_view.view_offset==Vector2i.ZERO,"fit control restores the complete field: %s / %s" % [app.board_view.zoom,app.board_view.view_offset])
 	DisplayServer.window_set_size(Vector2i(1920,1080))
 	await shot("v2_20_wide_field")
 	check(is_equal_approx(app.size.x/app.size.y,1920.0/1080.0),"16:9 viewport expands without letterboxing")
@@ -276,6 +318,11 @@ func run(root_app: Control) -> void:
 	app.save_settings()
 	check(app.settings_saved and not app.settings_retry_button.visible,"settings retry succeeds once storage is restored")
 	app.close_modal()
+	configure(96)
+	check(app.session.begin_trial(0),"survey trial opens between sites")
+	app.start_play()
+	check(app.tool_buttons.keys()==["probe"] and not app.hud.has("energy") and not app.hud.has("fleet_button"),"survey trial only exposes usable equipment")
+	await shot("v3_34_survey_trial")
 	configure(95)
 	app.session.stratum=Content.strata_for(95)-1
 	while not app.session.finished:

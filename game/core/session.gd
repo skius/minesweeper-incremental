@@ -55,7 +55,7 @@ func capacity() -> float:
 	return 40.0 if has("supercap") else (24.0 if has("nova") or has("overdrive") else (18.0 if has("battery") else 10.0))
 
 func drone_count() -> int:
-	if not has("drone"):
+	if not has("drone") or (trial>=0 and trial%2==0):
 		return 0
 	if has("swarm"):
 		return 8
@@ -149,6 +149,8 @@ func add_light(amount: int) -> void:
 
 func reveal(i: int, source: String = "manual") -> void:
 	action_depth+=1
+	if source=="drone" and i>=0 and i<board.cells.size() and not finished and not layer_ready:
+		events.append({"type":"drone_work","cell":i})
 	_reveal(i,source)
 	action_depth-=1
 	check_completion()

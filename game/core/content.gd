@@ -1,7 +1,7 @@
 class_name Content
 extends RefCounted
 
-const VERSION = "1.1.0"
+const VERSION = "1.2.0"
 const REGION_LENGTH = 16
 const CAMPAIGN_LENGTH = 96
 const REGIONS = [
@@ -61,7 +61,7 @@ const UPGRADES = [
 	{"id":"swarm","name":"Daybreak swarm","group":1,"cost":7000,"cores":6,"rank":65,"pre":"fleet","icon":"fleet","desc":"Eight drones. Each cycle paints a sweeping ribbon across the field.","branch":1,"depth":5,"side":-1},
 	{"id":"autodescent","name":"Autonomous descent","group":2,"cost":7500,"cores":5,"rank":71,"pre":"launchpad","icon":"fleet","desc":"The fleet descends to the next stratum by itself. New sites still await your signal.","branch":4,"depth":3,"side":1},
 	{"id":"aurora","name":"Aurora protocol","group":2,"cost":8400,"cores":6,"rank":73,"pre":"autodescent","icon":"nova","desc":"Clearing each stratum refills all energy. Pockets trigger safe crossbeams.","branch":4,"depth":4,"side":-1},
-	{"id":"aftershock","name":"Event horizon","group":0,"cost":8500,"cores":6,"rank":76,"pre":"nova","icon":"nova","desc":"Nova grows to 7 Ãƒâ€” 7 and cracks every plate inside.","branch":0,"depth":5,"side":1},
+	{"id":"aftershock","name":"Event horizon","group":0,"cost":8500,"cores":6,"rank":76,"pre":"nova","icon":"nova","desc":"Nova grows to 7 by 7 and cracks every plate inside.","branch":0,"depth":5,"side":1},
 	{"id":"recycler","name":"Closed circuit","group":2,"cost":8000,"cores":5,"rank":78,"pre":"resonance","icon":"battery","desc":"Beams refund energy for open tiles in their footprint. Precision becomes optional.","branch":2,"depth":4,"side":-1},
 	{"id":"overdrive","name":"Solar overdrive","group":1,"cost":10000,"cores":6,"rank":80,"pre":"swarm","icon":"nova","desc":"12 seconds of 10× fleet speed. Costs 12 energy; stores 24 energy.","branch":1,"depth":5,"side":1},
 	{"id":"legacy","name":"Unbroken current","group":2,"cost":11000,"cores":6,"rank":91,"pre":"aurora","icon":"nova","desc":"Your chain carries between strata and sites. All excavation breaks six plate layers.","branch":4,"depth":4,"side":1}

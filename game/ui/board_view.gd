@@ -52,12 +52,12 @@ func _ready() -> void:
 func geometry() -> void:
 	if session == null:
 		return
-	var fit := floorf(minf((size.x-64)/session.board.width,(size.y-126)/session.board.height))
+	var fit := floorf(minf((size.x-64)/session.board.width,(size.y-158)/session.board.height))
 	tile_size = minf(floorf(fit*zoom),90 if zoom>1 else 70)
 	visible_columns=mini(session.board.width,maxi(1,int((size.x-64)/tile_size)))
-	visible_rows=mini(session.board.height,maxi(1,int((size.y-126)/tile_size)))
+	visible_rows=mini(session.board.height,maxi(1,int((size.y-158)/tile_size)))
 	view_offset=view_offset.clamp(Vector2i.ZERO,Vector2i(session.board.width-visible_columns,session.board.height-visible_rows))
-	grid_origin = (size-Vector2(visible_columns,visible_rows)*tile_size)/2 + Vector2(0,4)
+	grid_origin=Vector2((size.x-visible_columns*tile_size)/2,94+(size.y-158-visible_rows*tile_size)/2)
 
 func cell_position(i: int) -> Vector2:
 	geometry()
@@ -67,7 +67,7 @@ func visible_cell(i: int) -> bool:
 	geometry()
 	return i>=0 and i%session.board.width>=view_offset.x and i%session.board.width<view_offset.x+visible_columns and i/session.board.width>=view_offset.y and i/session.board.width<view_offset.y+visible_rows
 
-func set_zoom(value: float, anchor: int = -1) -> void:
+func set_zoom(value: float, anchor: int = -1, pointer: Vector2 = Vector2.INF) -> void:
 	geometry()
 	if anchor<0:
 		anchor=(view_offset.y+visible_rows/2)*session.board.width+view_offset.x+visible_columns/2
@@ -75,9 +75,15 @@ func set_zoom(value: float, anchor: int = -1) -> void:
 	geometry()
 	view_offset=Vector2i(anchor%session.board.width-visible_columns/2,anchor/session.board.width-visible_rows/2)
 	geometry()
-	hover=-1
+	reproject_pointer(get_local_mouse_position() if pointer==Vector2.INF else pointer)
 	reset_drone_positions()
 	zoom_changed.emit(zoom)
+	queue_redraw()
+
+func reproject_pointer(pointer: Vector2) -> void:
+	keyboard_cell=-1
+	hover=index_at(pointer)
+	cell_hovered.emit(hover)
 	queue_redraw()
 
 func ensure_cell_visible(i: int) -> void:
@@ -113,26 +119,22 @@ func _gui_input(event: InputEvent) -> void:
 			view_offset=pan_offset+Vector2i((pan_start-event.position)/tile_size)
 			geometry()
 			reset_drone_positions()
-			queue_redraw()
+			reproject_pointer(event.position)
 			accept_event()
 			return
-		var next := index_at(event.position)
-		if next != hover:
-			hover = next
-			keyboard_cell = -1
-			cell_hovered.emit(hover)
-		queue_redraw()
+		reproject_pointer(event.position)
 	if event is InputEventMouseButton:
 		if event.button_index==MOUSE_BUTTON_MIDDLE:
 			panning=event.pressed
 			pan_start=event.position
 			pan_offset=view_offset
+			reproject_pointer(event.position)
 			accept_event()
 			return
 		if not event.pressed:
 			return
 		if event.button_index in [MOUSE_BUTTON_WHEEL_UP,MOUSE_BUTTON_WHEEL_DOWN]:
-			set_zoom(zoom+(0.25 if event.button_index==MOUSE_BUTTON_WHEEL_UP else -0.25),index_at(event.position))
+			set_zoom(zoom+(0.25 if event.button_index==MOUSE_BUTTON_WHEEL_UP else -0.25),index_at(event.position),event.position)
 			accept_event()
 			return
 		if zoom>1 and minimap_rect().has_point(event.position):
@@ -140,18 +142,18 @@ func _gui_input(event: InputEvent) -> void:
 			view_offset=Vector2i(relative*Vector2(session.board.width,session.board.height))-Vector2i(visible_columns/2,visible_rows/2)
 			geometry()
 			reset_drone_positions()
+			reproject_pointer(event.position)
 			accept_event()
 			return
 		var i := index_at(event.position)
 		if i >= 0 and event.button_index in [MOUSE_BUTTON_LEFT,MOUSE_BUTTON_RIGHT]:
+			reproject_pointer(event.position)
 			cell_pressed.emit(i,event.button_index == MOUSE_BUTTON_RIGHT)
 			accept_event()
 
 func animate_cells(cells: Array, source: String) -> void:
 	for j in range(cells.size()):
 		animations[cells[j]] = -minf(j*0.015,0.5)
-	if source == "drone" and not cells.is_empty():
-		visit_drone(cells[0])
 
 func visit_drone(cell: int) -> void:
 	var count := session.drone_count()
@@ -170,7 +172,7 @@ func ensure_drones(count: int) -> void:
 		drone_hold.append(0.0)
 
 func _process(delta: float) -> void:
-	if blocked:
+	if blocked or (panning and not Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE)):
 		panning=false
 	time += delta
 	for i in animations.keys():
@@ -206,9 +208,9 @@ func _draw() -> void:
 	for x in range(int(bar.size.x)):
 		draw_line(bar.position+Vector2(x,0),bar.position+Vector2(x,bar.size.y),Color("91b2db",float(x)/bar.size.x*0.18))
 	Palette.icon(self,"prism",Vector2(26,25),17,Palette.GOLD)
-	var caption := "FIELD_%03d" % (session.index+1)
+	var caption := "FIELD_%03d" % (session.index+1) if session.trial<0 else "TRIAL_%02d / %s" % [session.trial+1,"SURVEY" if session.trial%2==0 else "FLEET"]
 	if Content.strata_for(session.index,session.trial)>1:
-		caption += "  /  STRATUM %02d" % (session.stratum+1)
+		caption += "  ·  %02d/%02d" % [session.stratum+1,Content.strata_for(session.index,session.trial)]
 	draw_string(font,Vector2(43,31),caption,HORIZONTAL_ALIGNMENT_LEFT,-1,14,Palette.WHITE)
 	for x in range(int(size.x)-110,int(size.x)-31,5):
 		draw_line(Vector2(x,18),Vector2(x,31),Color(0.75,0.84,0.97,0.18),2)
@@ -277,10 +279,7 @@ func _draw() -> void:
 			draw_texture_rect(tile_texture(fill),Rect2(rect.position+depressed,rect.size+Vector2(0,3)),false)
 		if not visible_open and cell == MineBoard.HIDDEN:
 			if b.plates[i]>0:
-				var stripe := Color("42556f")
-				for j in range(mini(b.plates[i],3)):
-					var offset_x := (j-(mini(b.plates[i],3)-1)*0.5)*4
-					draw_line(rect.get_center()+Vector2(offset_x,-tile_size*0.21),rect.get_center()+Vector2(offset_x,tile_size*0.21),stripe,2)
+				Palette.plating(self,rect.get_center(),tile_size,b.plates[i],Color("42556f"))
 				for sign_value in [-1,1]:
 					draw_circle(rect.get_center()+Vector2(sign_value*tile_size*0.29,0),1.5,Color("d1d9df"))
 			if session.has("compass") and b.pockets[i]==1:
@@ -348,8 +347,7 @@ func draw_readout(selected: int) -> void:
 		if flags==b.clues[selected]:
 			Palette.mouse(self,center+Vector2(61,0),1,Palette.MINT,0.85)
 	elif b.cells[selected]==MineBoard.HIDDEN and b.plates[selected]>0:
-		for layer in range(mini(3,b.plates[selected])):
-			draw_line(center+Vector2(-33,-7+layer*7),center+Vector2(-8,-7+layer*7),Palette.MUTED,2)
+		Palette.plating(self,center+Vector2(-21,0),40,b.plates[selected],Palette.MUTED)
 		draw_string(font,center+Vector2(9,7),str(b.plates[selected]),HORIZONTAL_ALIGNMENT_LEFT,-1,20,Palette.WHITE)
 
 # Procedural keycaps are baked once per colour; hundreds of tiles can then batch.

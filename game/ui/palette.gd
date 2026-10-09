@@ -19,6 +19,17 @@ static var surface_cache: Dictionary = {}
 static var control_cache: Dictionary = {}
 const CLUES = [Color("779797"),Color("83c9ed"),Color("92dbb0"),Color("efad7b"),Color("bfa8eb"),Color("ed9bb7"),Color("e1d08b"),Color("eeeecc"),Color("ffffff")]
 
+static func plating(canvas: CanvasItem, center: Vector2, tile: float, layers: int, color: Color) -> void:
+	# Six separate laminations: every drilling hit removes a visible layer.
+	var pitch := maxf(2,floorf(tile*0.085))
+	var width := maxf(8,floorf(tile*0.35))
+	var thickness := maxf(1,floorf(pitch*0.55))
+	for layer in range(clampi(layers,0,6)):
+		var at := (center+Vector2(-width/2,pitch*2.5-layer*pitch)).round()
+		canvas.draw_rect(Rect2(at,Vector2(width,thickness)),color)
+		if tile>=32:
+			canvas.draw_line(at+Vector2(0,thickness),at+Vector2(width,thickness),color.lightened(0.3),1)
+
 static func box(color: Color, radius: int = 12, border: Color = Color.TRANSPARENT, border_width: int = 1) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.bg_color = color

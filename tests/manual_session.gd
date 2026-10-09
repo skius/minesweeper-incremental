@@ -10,7 +10,7 @@ var history: Array = []
 func run(root_app: Control) -> void:
 	app = root_app
 	DirAccess.make_dir_recursive_absolute(path)
-	app.session = null
+	app.session = app.store.load_session()
 	app.show_menu()
 	await capture()
 
@@ -80,3 +80,6 @@ func capture() -> void:
 	var file := FileAccess.open(path+"visible.json",FileAccess.WRITE)
 	file.store_string(JSON.stringify(visible,"  "))
 	file.close()
+	var record := FileAccess.open(path+"history.json",FileAccess.WRITE)
+	record.store_string(JSON.stringify(history,"  "))
+	record.close()

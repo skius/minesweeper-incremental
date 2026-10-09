@@ -59,8 +59,7 @@ func _draw() -> void:
 			if state==MineBoard.FLAG:
 				Palette.icon(self,"flag",rect.get_center(),unit*0.58,Palette.FLAG)
 			elif plates>0:
-				for j in range(mini(plates,3)):
-					draw_line(rect.get_center()+Vector2(-5,-4+j*4),rect.get_center()+Vector2(5,-4+j*4),Palette.EDGE,1.2)
+				Palette.plating(self,rect.get_center(),unit,plates,Color("42556f"))
 		if board.pockets[i]>0 and (state==MineBoard.OPEN or (demo.id=="compass" and progress>0)):
 			Palette.icon(self,"prism",rect.position+Vector2(rect.size.x-4,4),5,Palette.GOLD)
 		if demo.marks.has(i) and progress>0:

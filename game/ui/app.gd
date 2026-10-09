@@ -148,10 +148,15 @@ func layout_ui() -> void:
 				child.size=base.size+extra
 		child.position=base.position+shift
 	if is_instance_valid(board_view) and hud.has("flag_mode"):
-		hud.flag_mode.position=Vector2(board_view.size.x-73,48)
+		hud.flag_mode.position=Vector2(board_view.size.x-73,8)
 	if is_instance_valid(board_view) and hud.has("zoom_in"):
 		for j in range(3):
-			hud[["zoom_out","zoom_fit","zoom_in"][j]].position=Vector2(board_view.size.x-212+j*42,48)
+			hud[["zoom_out","zoom_fit","zoom_in"][j]].position=Vector2(board_view.size.x-212+j*42,8)
+	if is_instance_valid(board_view) and hud.has("fleet_button"):
+		hud.fleet_button.position=Vector2(board_view.size.x-73,48)
+		hud.fleet_title.position=Vector2(board_view.size.x-119,49)
+		hud.fleet_symbol.position=Vector2(board_view.size.x-153,49)
+		hud.fleet_state.position=Vector2(board_view.size.x-190,51)
 	for child in modal.get_children():
 		if child is ColorRect:
 			child.size=size
@@ -355,34 +360,25 @@ func build_field() -> void:
 	board_view.cell_hovered.connect(on_hover)
 	ui.add_child(board_view)
 	if ui_stage>=1:
-		hud.flag_mode=symbol_button(board_view,"flag",Rect2(rect.size.x-73,48,44,34),toggle_flag_mode,"Flag mode · left click places flags · F")
+		hud.flag_mode=symbol_button(board_view,"flag",Rect2(rect.size.x-73,8,44,34),toggle_flag_mode,"Flag mode · left click places flags · F")
 	if session.index>=3:
 		for j in range(3):
 			var kind: String=["zoom_out","zoom_fit","zoom_in"][j]
-			hud[kind]=symbol_button(board_view,kind,Rect2(rect.size.x-212+j*42,48,38,34),func():
+			hud[kind]=symbol_button(board_view,kind,Rect2(rect.size.x-212+j*42,8,38,34),func():
 				board_view.set_zoom(1 if kind=="zoom_fit" else board_view.zoom+(-0.25 if kind=="zoom_out" else 0.25))
 			,["Zoom out","Show whole field","Zoom in · scroll to zoom\nMiddle-drag or click the overview to pan"][j])
 	var accent := Color(Content.REGIONS[session.region()].color)
-	var field_label := label_at(ui,"",Rect2(66,388,93,64),30,accent,true)
-	field_label.tooltip_text = "Current site"
-	field_label.mouse_filter = MOUSE_FILTER_PASS
-	hud.progress = label_at(ui,"",Rect2(66,452,115,34),16,Palette.MUTED)
-	hud.progress.visible = false
-	if Content.strata_for(session.index,session.trial)>1:
-		for layer in range(Content.strata_for(session.index,session.trial)):
-			var slab := panel(ui,Rect2(70,512+layer*12,38,5),accent if layer<=session.stratum else Palette.EDGE,2)
-			slab.tooltip_text = "Stratum %d of %d" % [session.stratum+1,Content.strata_for(session.index,session.trial)]
-			slab.mouse_filter = MOUSE_FILTER_PASS
 	if session.has("chain"):
-		hud.chain = label_at(ui,"",Rect2(65,343,105,29),18,Palette.GOLD,true)
-	if session.has("drone"):
-		icon(ui,"drone",Rect2(1292,396,68,45),accent,32)
-		hud.fleet_title = label_at(ui,str(session.drone_count()),Rect2(1360,400,45,38),22,accent,true)
-		var fleet_button := symbol_button(ui,"pause",Rect2(1310,455,62,39),toggle_drones,"Pause / resume the fleet")
+		icon(board_view,"upgrade:chain",Rect2(276,50,28,26),Palette.GOLD,19)
+		hud.chain = label_at(board_view,"",Rect2(309,47,88,30),18,Palette.GOLD,true)
+	if session.drone_count()>0:
+		hud.fleet_symbol=icon(board_view,"drone",Rect2(rect.size.x-153,49,28,28),Palette.MINT,22)
+		hud.fleet_title = label_at(board_view,str(session.drone_count()),Rect2(rect.size.x-119,49,35,30),18,Palette.MINT,true)
+		var fleet_button := symbol_button(board_view,"pause",Rect2(rect.size.x-73,48,44,32),toggle_drones,"Pause / resume the fleet")
 		hud.fleet_button = fleet_button
-		hud.fleet_state = icon(ui,"pulse",Rect2(1326,508,30,30),Palette.MUTED,18)
+		hud.fleet_state = icon(board_view,"pulse",Rect2(rect.size.x-190,51,26,26),Palette.MUTED,18)
 		hud.fleet_state.mouse_filter = MOUSE_FILTER_PASS
-	if session.has("cross") or session.has("overdrive") or session.has("oracle"):
+	if session.tool_available("cross") or session.tool_available("overdrive") or (session.has("oracle") and session.drone_count()>0):
 		var meter := EnergyMeter.new()
 		meter.position=Vector2(555,753)
 		meter.size=Vector2(330,32)
@@ -485,7 +481,6 @@ func update_hud() -> void:
 		if selected_tool!="" and selected_tool!="probe":
 			meter.cost=session.effective_tool_cost(selected_tool,target) if target>=0 else session.minimum_tool_cost(selected_tool)
 	var b := session.board
-	hud.progress.text = "%d / %d" % [b.open_count(),b.width*b.height-b.mine_count]
 	if hud.has("chain"):
 		hud.chain.text = "×%d" % session.multiplier()
 		hud.chain.tooltip_text = "Manual chain: %d. No timer." % session.chain
@@ -577,7 +572,13 @@ func tree_focus(id: String) -> void:
 	paragraph(tree_detail,item.desc,Rect2(0,361,302,92),18,Palette.MUTED)
 	var reason := session.unlock_reason(item)
 	var owned := session.has(id)
-	label_at(tree_detail,"%s light   /   %d cores" % [format_number(item.cost),item.cores] if not owned else "Connected",Rect2(0,479,306,30),17,color)
+	if owned:
+		label_at(tree_detail,"Connected",Rect2(0,479,306,30),17,color)
+	else:
+		icon(tree_detail,"prism",Rect2(0,481,24,24),Palette.GOLD,19)
+		label_at(tree_detail,format_number(item.cost),Rect2(35,477,121,31),19,Palette.WHITE)
+		icon(tree_detail,"core",Rect2(172,481,24,24),Palette.MUTED,19)
+		label_at(tree_detail,str(item.cores),Rect2(207,477,90,31),19,Palette.WHITE)
 	var buy_button := button(tree_detail,"Connect" if reason=="READY TO INSTALL" else reason,Rect2(0,530,300,59),func(): purchase_upgrade(id),reason=="READY TO INSTALL")
 	buy_button.add_theme_font_size_override("font_size",15)
 	buy_button.disabled = reason != "READY TO INSTALL"
@@ -673,8 +674,6 @@ func consume_events() -> void:
 			"excavate":
 				var p := board_view.position+board_view.cell_position(event.cell)
 				board_view.animations[event.cell] = 0
-				if event.get("source","")=="drone":
-					board_view.visit_drone(event.cell)
 				if board_view.visible_cell(event.cell):
 					effects.burst(p,Palette.GOLD,6 if event.broken else 3)
 				audio.play("flag",0.8 if not event.broken else 1.2)
@@ -682,6 +681,8 @@ func consume_events() -> void:
 				board_view.complete_wave = 0
 				audio.play("complete",1.2)
 				call_deferred("refresh_layer_ui")
+			"drone_work":
+				board_view.visit_drone(event.cell)
 			"new_layer":
 				call_deferred("refresh_layer_ui")
 			"strike":
