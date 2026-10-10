@@ -23,5 +23,5 @@ func _draw() -> void:
 		draw_rect(Rect2(7,7,65,65),Palette.MINT,false,2)
 		Palette.mouse(self,Vector2(40,41),1,Palette.INK,0.6)
 	elif kind=="tracer":
-		var center := Vector2(39.5,39.5)
-		draw_polyline(PackedVector2Array([center+Vector2(0,-5),center+Vector2(5,0),center+Vector2(0,5),center+Vector2(-5,0),center+Vector2(0,-5)]),Palette.INK,2,true)
+		Palette.plating(self,Vector2(39.5,39.5),19,3,Color("42556f"))
+		Palette.safe_wake(self,Vector2(45,34))

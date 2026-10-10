@@ -1,6 +1,12 @@
 class_name Palette
 extends RefCounted
 
+static func safe_wake(canvas: CanvasItem, center: Vector2) -> void:
+	var points := PackedVector2Array([center+Vector2(0,-4),center+Vector2(4,0),center+Vector2(0,4),center+Vector2(-4,0)])
+	canvas.draw_colored_polygon(points,INK)
+	points.append(points[0])
+	canvas.draw_polyline(points,MINT,1.2,true)
+
 const INK = Color("141727")
 const PANEL = Color("252b3b")
 const PANEL_LIGHT = Color("343e51")

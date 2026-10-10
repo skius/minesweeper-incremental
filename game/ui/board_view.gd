@@ -302,8 +302,7 @@ func _draw() -> void:
 				draw_line(rect.position+Vector2(4,8),rect.position+Vector2(4,4),Palette.INK,2)
 				draw_line(rect.position+Vector2(4,4),rect.position+Vector2(8,4),Palette.INK,2)
 			if session.drift.traces[i]>0 and cell==MineBoard.HIDDEN:
-				var center := rect.get_center()
-				draw_polyline(PackedVector2Array([center+Vector2(0,-5),center+Vector2(5,0),center+Vector2(0,5),center+Vector2(-5,0),center+Vector2(0,-5)]),Palette.INK,2,true)
+				Palette.safe_wake(self,rect.position+Vector2(rect.size.x-4,4))
 		if i==selected and not blocked:
 			draw_rect(rect.grow(1),Palette.WHITE if keyboard_cell>=0 else Color(Palette.WHITE,0.65),false,2 if keyboard_cell>=0 else 1)
 		if i==rejected_cell and reject_age>0:

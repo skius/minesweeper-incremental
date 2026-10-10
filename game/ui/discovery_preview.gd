@@ -68,8 +68,7 @@ func _draw() -> void:
 			draw_line(rect.position+Vector2(3,7),rect.position+Vector2(3,3),Palette.MINT,2)
 			draw_line(rect.position+Vector2(3,3),rect.position+Vector2(7,3),Palette.MINT,2)
 		if frame.drift.traces[i]>0 and state==MineBoard.HIDDEN:
-			var center_tile := rect.get_center()
-			draw_polyline(PackedVector2Array([center_tile+Vector2(0,-5),center_tile+Vector2(5,0),center_tile+Vector2(0,5),center_tile+Vector2(-5,0),center_tile+Vector2(0,-5)]),Palette.INK,2,true)
+			Palette.safe_wake(self,rect.position+Vector2(rect.size.x-4,4))
 		if demo.id=="ballast":
 			var dx: int=absi(i%int(board.width)-demo.target%int(board.width))
 			var dy: int=absi(i/int(board.width)-demo.target/int(board.width))

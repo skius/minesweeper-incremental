@@ -1408,11 +1408,34 @@ func release_smoke() -> void:
 	else:
 		ok=false
 	ok = ok and session.attempt==1 and not session.failed and session.has("cross")
+	# Exercise schema 4 and new input paths from the exported PCK itself.
+	session=GameSession.new()
+	ok = ok and not session.can_chord() and Content.UPGRADES.size()==65
+	session.index=48
+	session.upgrades.assign(["lens","chording","ballast","anchor","stasis"])
+	session.start_board()
+	start_play()
+	var focus_cell := session.board.width*(session.board.height/2)+session.board.width/2
+	await smoke_click(board_view.global_position+board_view.cell_position(focus_cell))
+	var protected_clues := session.board.clues.duplicate()
+	session.drift.remaining=0.01
+	session.tick(0.02)
+	for cell in session.drift.area(session.board,focus_cell,3):
+		ok = ok and session.board.clues[cell]==protected_clues[cell]
+	await smoke_click(tool_buttons.anchor.global_position+tool_buttons.anchor.size/2)
+	await smoke_click(board_view.global_position+board_view.cell_position(focus_cell))
+	ok = ok and session.drift.anchors.count(1)==25
+	session.energy=session.capacity()
+	await smoke_click(tool_buttons.stasis.global_position+tool_buttons.stasis.size/2)
+	ok = ok and session.drift.stasis>11 and save_game()
+	loaded=store.load_session()
+	ok = ok and loaded!=null and loaded.drift.anchors==session.drift.anchors and loaded.drift.sequence==session.drift.sequence and loaded.drift.stasis>11
+	await smoke_capture("release-drift")
 	show_settings()
 	await smoke_capture("release-settings")
 	show_licenses()
 	await smoke_capture("release-licences")
-	print("AFTERLIGHT %s: exported build renders, pins a tree purchase, persists failure and retries; editor=%s" % ["PASS" if ok else "FAIL",str(OS.has_feature("editor"))])
+	print("AFTERLIGHT %s: exported build renders, pins purchases, retries failure and saves protected drifting ground/Anchor/Stasis; editor=%s" % ["PASS" if ok else "FAIL",str(OS.has_feature("editor"))])
 	get_tree().quit(0 if ok else 1)
 
 func smoke_capture(filename: String) -> void:
