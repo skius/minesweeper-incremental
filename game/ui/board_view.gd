@@ -5,6 +5,7 @@ signal cell_pressed(index: int, right: bool)
 signal cell_hovered(index: int)
 signal zoom_changed(value: float)
 
+var changed_clues: Dictionary = {}
 var session: GameSession
 var hover: int = -1
 var keyboard_cell: int = -1
@@ -172,6 +173,10 @@ func ensure_drones(count: int) -> void:
 		drone_hold.append(0.0)
 
 func _process(delta: float) -> void:
+	for cell in changed_clues.keys():
+		changed_clues[cell]-=delta
+		if changed_clues[cell]<=0:
+			changed_clues.erase(cell)
 	if blocked or (panning and not Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE)):
 		panning=false
 	time += delta
@@ -290,10 +295,20 @@ func _draw() -> void:
 			Palette.icon(self,"nova",rect.get_center(),tile_size*0.38,Palette.CORAL)
 		if (session.failed or session.finished or session.layer_ready) and b.mines[i] == 1 and cell == MineBoard.HIDDEN:
 			Palette.icon(self,"mine",rect.get_center(),tile_size*0.32,Palette.INK)
+		if session.drift.enabled:
+			if changed_clues.has(i):
+				draw_rect(rect,Color(Palette.MINT,minf(0.7,changed_clues[i])),false,2)
+			if session.drift.anchors[i]>0 and cell==MineBoard.HIDDEN:
+				draw_line(rect.position+Vector2(4,8),rect.position+Vector2(4,4),Palette.INK,2)
+				draw_line(rect.position+Vector2(4,4),rect.position+Vector2(8,4),Palette.INK,2)
+			if session.drift.traces[i]>0 and cell==MineBoard.HIDDEN:
+				var center := rect.get_center()
+				draw_polyline(PackedVector2Array([center+Vector2(0,-5),center+Vector2(5,0),center+Vector2(0,5),center+Vector2(-5,0),center+Vector2(0,-5)]),Palette.INK,2,true)
 		if i==selected and not blocked:
 			draw_rect(rect.grow(1),Palette.WHITE if keyboard_cell>=0 else Color(Palette.WHITE,0.65),false,2 if keyboard_cell>=0 else 1)
 		if i==rejected_cell and reject_age>0:
 			draw_rect(rect.grow(1),Color(Palette.CORAL,minf(1,reject_age*2)),false,2)
+	draw_shelter()
 	draw_readout(selected)
 	if zoom>1:
 		var map := minimap_rect()
@@ -330,7 +345,7 @@ func draw_readout(selected: int) -> void:
 		draw_line(center+Vector2(-20,-12),center+Vector2(-20,12),Palette.EDGE,1)
 		Palette.icon(self,"flag",center+Vector2(1,0),18,Palette.MUTED)
 		draw_string(font,center+Vector2(16,7),str(flags),HORIZONTAL_ALIGNMENT_LEFT,-1,20,Palette.MINT if flags==b.clues[selected] else Palette.WHITE)
-		if flags==b.clues[selected]:
+		if flags==b.clues[selected] and session.can_chord():
 			Palette.mouse(self,center+Vector2(61,0),1,Palette.MINT,0.85)
 	elif b.cells[selected]==MineBoard.HIDDEN and b.plates[selected]>0:
 		Palette.plating(self,center+Vector2(-80,0),30,b.plates[selected],Palette.MUTED)
@@ -357,3 +372,26 @@ func tile_texture(color: Color) -> ImageTexture:
 	var texture := ImageTexture.create_from_image(image)
 	tile_textures[key]=texture
 	return texture
+
+
+func draw_shelter() -> void:
+	if not session.drift.enabled or not session.board.generated or session.finished or session.failed:
+		return
+	var d := session.drift
+	var b := session.board
+	var cells := d.area(b,d.focus,d.radius)
+	if d.stasis>0 or d.converged:
+		cells.assign(range(b.cells.size()))
+	# Only the outline is inked. The actual cells remain quiet and readable.
+	for i in cells:
+		if not visible_cell(i):
+			continue
+		var p := cell_position(i)-Vector2.ONE*tile_size/2
+		var rect := Rect2(p+Vector2.ONE,Vector2.ONE*(tile_size-2))
+		for side in range(4):
+			var neighbour: int = [i-b.width,i+1,i+b.width,i-1][side]
+			var outer: bool = [i/b.width==0,i%b.width==b.width-1,i/b.width==b.height-1,i%b.width==0][side]
+			if not outer and cells.has(neighbour) and visible_cell(neighbour):
+				continue
+			var points := [rect.position,Vector2(rect.end.x,rect.position.y),rect.end,Vector2(rect.position.x,rect.end.y)]
+			draw_line(points[side],points[(side+1)%4],Palette.MINT,2,true)

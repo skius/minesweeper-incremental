@@ -7,6 +7,72 @@ extends RefCounted
 static func draw(c: CanvasItem, id: String, p: Vector2, size: float, color: Color) -> void:
 	var s := size/24.0
 	match id:
+		"chording":
+			box(c,p,Rect2(-4,-4,8,8),s,color)
+			for d in [Vector2.LEFT,Vector2.RIGHT,Vector2.UP,Vector2.DOWN]:
+				c.draw_line(p+d*6*s,p+d*10*s,color,2*s,true)
+				c.draw_circle(p+d*11*s,1.7*s,color)
+		"ballast":
+			for x in [-1,1]:
+				for y in [-1,1]:
+					line(c,p,[[x*5,y*10],[x*10,y*10],[x*10,y*5]],s,color,2)
+			line(c,p,[[0,-5],[-4,4],[0,2],[4,4],[0,-5]],s,color)
+		"mooring","clue_anchor":
+			box(c,p,Rect2(-10,3,20,7),s,color)
+			if id=="mooring":
+				line(c,p,[[-3,7],[-3,-10],[7,-7],[-3,-3]],s,color,2)
+			else:
+				box(c,p,Rect2(-4,-10,8,8),s,color)
+				line(c,p,[[-7,0],[-7,-5],[-10,-5]],s,color)
+				line(c,p,[[7,0],[7,-5],[10,-5]],s,color)
+		"anchor","deep_anchor":
+			line(c,p,[[0,-10],[0,6],[-8,0]],s,color,2)
+			line(c,p,[[0,6],[8,0]],s,color,2)
+			circle(c,p,Vector2(0,-8),3,s,color)
+			line(c,p,[[-10,6],[-10,10],[10,10],[10,6]],s,color)
+			if id=="deep_anchor":
+				line(c,p,[[-9,-1],[-6,3],[-9,3],[-6,7]],s,color)
+				line(c,p,[[9,-1],[6,3],[9,3],[6,7]],s,color)
+		"tracer","backwash":
+			circle(c,p,Vector2(6,-5),4,s,color)
+			for x in [-9,-3,3]:
+				line(c,p,[[x,2],[x+3,5],[x,8]],s,color)
+			if id=="backwash":
+				line(c,p,[[-8,-8],[-8,-1],[-3,-1]],s,color)
+				box(c,p,Rect2(-11,-11,6,4),s,color)
+		"induction":
+			c.draw_arc(p,10*s,0.3,TAU-0.3,24,color,2*s,true)
+			line(c,p,[[2,-8],[-5,1],[1,1],[-2,8],[6,-2],[0,-2],[2,-8]],s,color)
+		"grounded_pulse":
+			circle(c,p,Vector2(0,-4),5,s,color)
+			line(c,p,[[0,1],[0,7],[-8,7]],s,color)
+			line(c,p,[[0,7],[8,7]],s,color)
+			for x in [-8,0,8]:
+				line(c,p,[[x,7],[x,11]],s,color)
+		"beam_anchor":
+			for n in [-8,0,8]:
+				line(c,p,[[n,-10],[n,10]],s,color)
+				line(c,p,[[-10,n],[10,n]],s,color)
+			circle(c,p,Vector2.ZERO,3,s,color,true)
+		"interceptor":
+			drone(c,p+Vector2(0,-5)*s,0.7*s,color)
+			line(c,p,[[-10,1],[-7,9],[7,9],[10,1]],s,color,2)
+			circle(c,p,Vector2(0,5),2,s,color,true)
+		"stasis","stasis_engine":
+			circle(c,p,Vector2.ZERO,10,s,color)
+			if id=="stasis":
+				line(c,p,[[-3,-5],[-3,5]],s,color,2.5)
+				line(c,p,[[3,-5],[3,5]],s,color,2.5)
+			else:
+				line(c,p,[[1,-7],[-4,1],[1,1],[-1,7],[5,-1],[0,-1]],s,color,2)
+			line(c,p,[[-3,-12],[3,-12]],s,color)
+		"convergence":
+			box(c,p,Rect2(-4,-4,8,8),s,color)
+			for angle in range(4):
+				var d := Vector2.from_angle(angle*PI/2)
+				var a := d.orthogonal()
+				c.draw_line(p+d*7*s+a*3*s,p+d*7*s-a*3*s,color,2*s,true)
+				c.draw_line(p+d*11*s,p+d*7*s,color,2*s,true)
 		"lens":
 			circle(c,p,Vector2(-2,-2),7,s,color)
 			line(c,p,[[3,3],[10,10]],s,color,2.5)

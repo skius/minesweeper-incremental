@@ -52,11 +52,11 @@ func run() -> void:
 		for item in Content.UPGRADES:
 			if s.buy(item.id):
 				unlocks.append({"id":item.id,"field":97,"minute":snappedf(elapsed/60,0.1)})
-		if s.upgrades.size() != 50:
+		if s.upgrades.size() != Content.UPGRADES.size():
 			failures.append("%s cannot buy every upgrade (%d)" % [profile.name,s.upgrades.size()])
 		var result := {"policy":profile.name,"seconds_per_decision":profile.think,"minutes":snappedf(elapsed/60,0.1),"actions":actions,"strata":strata,"upgrades":s.upgrades.size(),"regions":regions,"unlocks":unlocks,"drone_reveals":s.total_drone,"reveals":s.total_reveals,"light":s.credits,"cores":s.cores}
 		reports.append(result)
-		print("CAMPAIGN %s: %.1f minutes, %d actions, %d strata, %d/50 upgrades" % [profile.name,elapsed/60,actions,strata,s.upgrades.size()])
+		print("CAMPAIGN %s: %.1f minutes, %d actions, %d strata, %d/%d upgrades" % [profile.name,elapsed/60,actions,strata,s.upgrades.size(),Content.UPGRADES.size()])
 	var file := FileAccess.open("res://test_runs/balance_v2.json",FileAccess.WRITE)
 	file.store_string(JSON.stringify(reports,"\t"))
 	file.close()

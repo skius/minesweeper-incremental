@@ -31,6 +31,20 @@ func _process(delta: float) -> void:
 	busy = true
 	history.append(command)
 	match command.get("action",""):
+		"drift_fixture":
+			app.close_modal()
+			app.session=GameSession.new()
+			app.session.index=40
+			app.session.upgrades.assign(["lens","chording","cross","focus","probe2","ballast","anchor","tracer","battery"])
+			app.session.drones_enabled=false
+			app.session.credits=0
+			app.session.cores=0
+			app.session.start_board()
+			app.start_play()
+		"hover":
+			var motion := InputEventMouseMotion.new()
+			motion.position=app.board_view.position+app.board_view.cell_position(int(command.cell))
+			get_viewport().push_input(motion,true)
 		"click":
 			var p := Vector2(command.get("x",0),command.get("y",0))
 			if command.has("cell") and app.board_view != null:
@@ -74,6 +88,7 @@ func capture() -> void:
 	var visible := {"id":last_id,"screen":app.screen,"modal":app.modal_kind,"tool":app.selected_tool}
 	if app.session != null:
 		var s: GameSession = app.session
+		visible.merge({"drift_wave":s.drift.sequence,"drift_in":s.drift.remaining,"shelter":s.drift.focus,"anchors":s.drift.anchors.count(1),"traces":Array(s.drift.traces),"plates":Array(s.board.plates)})
 		visible.merge({"index":s.index,"credits":s.credits,"cores":s.cores,"energy":s.energy,"strikes":s.strikes,"damage":s.damage,"cargo":s.board_earned,"failed":s.failed,"attempt":s.attempt,"finished":s.finished,"upgrades":s.upgrades,"width":s.board.width,"height":s.board.height,"cells":[]})
 		for i in range(s.board.cells.size()):
 			visible.cells.append(str(s.board.clues[i]) if s.board.cells[i]==MineBoard.OPEN else ("F" if s.board.cells[i]==MineBoard.FLAG else ("X" if s.board.cells[i]==MineBoard.HIT else "?")))

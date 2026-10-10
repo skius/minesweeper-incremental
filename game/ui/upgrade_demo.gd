@@ -19,6 +19,9 @@ func _init(upgrade_id: String) -> void:
 	grant(id)
 	session.energy=session.capacity()
 	prepare()
+	session.ensure_drift()
+	if Content.upgrade(id).branch==6:
+		prepare_drift()
 	workers=session.drone_count() if action=="drone" else 0
 	frames.append(snapshot())
 	run_action()
@@ -164,7 +167,8 @@ func prepare() -> void:
 			session.energy=session.capacity()
 			metric="capacity"
 			action="battery"
-		"flywheel","chord","synchrony","conductor":
+		"chording","flywheel","chord","synchrony","conductor","clue_anchor":
+			grant("chording")
 			seeded(2)
 			if id!="conductor":
 				for i in range(49):
@@ -203,6 +207,9 @@ func prepare() -> void:
 	session.events.clear()
 
 func run_action() -> void:
+	if Content.upgrade(id).branch==6:
+		run_drift()
+		return
 	match id:
 		"lens","compass":
 			pass
@@ -223,7 +230,7 @@ func run_action() -> void:
 			for _i in range(8):
 				session.tick(0.31)
 				frames.append(snapshot())
-		"flywheel","chord","synchrony","conductor":
+		"chording","flywheel","chord","synchrony","conductor":
 			session.chord(target)
 		"supercap":
 			grant("supercap")
@@ -237,7 +244,55 @@ func snapshot() -> Dictionary:
 	for event in session.events:
 		if event.type=="salvage":
 			salvage+=event.amount
-	return {"board":session.board.to_dict(),"energy":session.energy,"capacity":session.capacity(),"pulse":session.probe_charge,"chain":session.multiplier(),"light":session.board_earned,"salvage":salvage,"open":session.board.open_count(),"flags":session.board.cells.count(MineBoard.FLAG),"plates":session.board.plates[target] if target<session.board.cells.size() else 0,"layer":session.stratum+1}
+	return {"board":session.board.to_dict(),"drift":session.drift.to_dict(),"anchors":session.drift.anchors.count(1),"traces":session.drift.traces.count(1),"stasis":session.drift.stasis,"shelter":session.drift.area(session.board,session.drift.focus,session.drift.radius).size(),"pinned":1 if session.drift.converged else 0,"energy":session.energy,"capacity":session.capacity(),"pulse":session.probe_charge,"chain":session.multiplier(),"light":session.board_earned,"salvage":salvage,"open":session.board.open_count(),"flags":session.board.cells.count(MineBoard.FLAG),"plates":session.board.plates[target] if target<session.board.cells.size() else 0,"layer":session.stratum+1}
 
 func metric_icon() -> String:
-	return {"energy":"energy","capacity":"battery","pulse":"pulse","chain":"upgrade:chain","light":"prism","salvage":"prism","open":"lens","flags":"flag","plates":"upgrade:drill","layer":"upgrade:autodescent"}.get(metric,"lens")
+	return {"anchors":"upgrade:anchor","traces":"upgrade:tracer","stasis":"upgrade:stasis","shelter":"upgrade:ballast","pinned":"upgrade:convergence","energy":"energy","capacity":"battery","pulse":"pulse","chain":"upgrade:chain","light":"prism","salvage":"prism","open":"lens","flags":"flag","plates":"upgrade:drill","layer":"upgrade:autodescent"}.get(metric,"lens")
+
+func prepare_drift() -> void:
+	session.index=32
+	session.drift=FieldDrift.new()
+	session.drift.setup(session.board,32,-1)
+	action="drift"
+	metric="anchors"
+	match id:
+		"ballast":
+			session.drift.set_focus(session.board,target,2)
+			metric="shelter"
+		"tracer": metric="traces"
+		"induction":
+			session.energy=0
+			metric="energy"
+		"interceptor":
+			grant("drone")
+			metric="flags"
+		"backwash": metric="open"
+		"stasis": metric="stasis"
+		"beam_anchor","stasis_engine":
+			grant("cross")
+			if id=="stasis_engine":
+				session.drift.stasis=12
+				metric="energy"
+		"deep_anchor":
+			session.board.plates.fill(2)
+			metric="plates"
+		"convergence":
+			var hidden := 0
+			for i in range(session.board.cells.size()):
+				if session.board.mines[i]==0:
+					hidden+=1
+					if hidden>8:
+						session.board.cells[i]=MineBoard.OPEN
+			metric="pinned"
+
+func run_drift() -> void:
+	match id:
+		"ballast": session.set_focus(target)
+		"mooring": session.flag(8)
+		"anchor","deep_anchor": session.use_tool("anchor",target)
+		"grounded_pulse": session.use_tool("probe")
+		"beam_anchor","stasis_engine": session.use_tool("cross",target)
+		"clue_anchor": session.chord(target)
+		"stasis": session.use_tool("stasis")
+		"convergence": session.check_completion()
+		_: session.shift_field()

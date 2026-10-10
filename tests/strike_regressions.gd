@@ -123,6 +123,7 @@ static func _shield_and_chord(check: Callable) -> void:
 	check.call(guarded.finished and guarded.last_reward.rating == 2 and guarded.last_reward.cores == 1, "absorbed strike still forfeits perfect medal and Bounty core")
 	# Two wrong flags are one mistaken chord, not two separate mistakes.
 	var chord := _fixture(20,[0,16,18])
+	chord.upgrades.append("chording")
 	chord.board.cells[24] = MineBoard.OPEN
 	chord.board.cells[23] = MineBoard.FLAG
 	chord.board.cells[25] = MineBoard.FLAG

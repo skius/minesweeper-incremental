@@ -1,4 +1,23 @@
-# Delivery state — Afterlight 1.3.0
+# Delivery state — Afterlight 1.4.0 (verification in progress)
+
+The moving-ground revision adds 15 upgrades (65 total): early Chord relay and a
+fourteen-node Drift branch. Mines begin adjacent hidden-cell swaps at field 33;
+pointer/keyboard shelter plus a clue-preserving halo, worked cells, flags, anchors
+and every recent focus zone are protected. Saves use schema 4; legacy current
+fields remain static until the next new field. Trials remain static.
+
+Implemented presentation includes unique procedural icons, real-rule previews,
+aimed Anchor (6), Stasis (7), a warning clock, shelter outline, anchor corners,
+safe-wake diamonds, changed-clue flashes and an optional illustrated legend.
+
+Current validation: 90,113 core/persistence/preview/layout checks; 16,928 independent
+drift checks; 769 native UI checks with 59 viewport captures. Inspected shelter,
+legend, Stasis/anchors, all icon families, previews and the full tree. Three
+campaign policies acquire all 65 upgrades; blind-spam regression checks pass.
+Native agent-directed moving-field play and updated exports/package verification
+are still pending. Do not distribute the old build as 1.4.
+
+## Previous delivery (1.3.0)
 
 The revision is implemented, verified, exported and packaged on `codex/afterlight`. Main remains unchanged. Tree milestone `e17e1d9` and gameplay source milestone `b50db5a` are pushed; subsequent changes are delivery documentation.
 

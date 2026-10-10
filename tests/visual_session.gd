@@ -446,9 +446,10 @@ func run(root_app: Control) -> void:
 		var signature: int=hash(icon_image.get_region(atlas.icon_rects[id]).get_data())
 		check(not signatures.has(signature),"unique rendered upgrade silhouette: "+id)
 		signatures[signature]=id
-	check(signatures.size()==50,"every discovery owns a distinct rendered symbol")
+	check(signatures.size()==Content.UPGRADES.size(),"every discovery owns a distinct rendered symbol")
 	app.wipe(app.modal)
-	for page in range(5):
+	await drift_checks()
+	for page in range(ceili(Content.UPGRADES.size()/12.0)):
 		for after in [false,true]:
 			var previews := load("res://tests/preview_atlas.gd").new() as Control
 			app.modal.add_child(previews)
@@ -472,3 +473,63 @@ func configure(index: int) -> void:
 	app.session.start_board()
 	app.session.events.clear()
 	app.start_play()
+
+func drift_checks() -> void:
+	configure(32)
+	app.session.upgrades.assign(["lens","chording"])
+	app.session.drones_enabled=false
+	app.session.start_board()
+	app.start_play()
+	await click(app.board_view.global_position+app.board_view.cell_position(85))
+	var point: Vector2=app.board_view.global_position+app.board_view.cell_position(103)
+	var motion := InputEventMouseMotion.new()
+	motion.position=point
+	get_viewport().push_input(motion,true)
+	check(app.session.drift.focus==103,"native pointer updates the drift shelter before the next wave")
+	var clues: PackedByteArray=app.session.board.clues.duplicate()
+	var mines: PackedByteArray=app.session.board.mines.duplicate()
+	app.session.drift.remaining=0.02
+	await frames(4)
+	check(app.session.drift.sequence==1,"late-field clock moves mines natively")
+	for cell in app.session.drift.area(app.session.board,103,2):
+		check(clues[cell]==app.session.board.clues[cell] and mines[cell]==app.session.board.mines[cell],"pointer shelter keeps its displayed clues and mines fixed")
+	await shot("v6_01_drift_shelter")
+	await click(app.hud.drift.global_position+app.hud.drift.size/2)
+	check(app.modal_kind=="drift_legend","drift clock opens its optional illustrated legend")
+	var sequence: int=app.session.drift.sequence
+	app.session.drift.remaining=0.02
+	await frames(90)
+	check(app.session.drift.sequence==sequence,"drift pauses behind its legend")
+	await shot("v6_02_drift_legend")
+	app.modal_history.clear()
+	app.close_modal()
+	app.session.upgrades.append_array(["ballast","anchor","deep_anchor","stasis"])
+	app.session.energy=10
+	app.start_play()
+	await key(KEY_6)
+	check(app.selected_tool=="anchor","keyboard arms ground anchor")
+	await click(point)
+	check(app.session.drift.anchors.count(1)==49,"native ground anchor pins the upgraded seven by seven area")
+	check(app.session.energy<7,"native anchor spends its energy")
+	app.session.energy=10
+	await key(KEY_7)
+	check(app.session.drift.stasis>11,"keyboard stasis freezes the field")
+	sequence=app.session.drift.sequence
+	await frames(90)
+	check(sequence==app.session.drift.sequence,"native stasis prevents timed movement")
+	await shot("v6_03_stasis_and_anchor")
+	await key(KEY_RIGHT)
+	check(app.session.drift.focus==app.board_view.keyboard_cell,"keyboard selection moves the shelter")
+	check_field_spacing()
+	app.show_pause()
+	var saved: Dictionary=app.session.to_dict()
+	app.session=GameSession.from_dict(JSON.parse_string(JSON.stringify(saved)))
+	check(app.session!=null and app.session.drift.anchors.count(1)==49 and app.session.drift.stasis>0,"native mid-field save keeps anchors and remaining stasis")
+	app.close_modal()
+	configure(95)
+	app.show_tree()
+	app.upgrade_tree.zoom=0.44
+	app.tree_focus("stasis")
+	await shot("v6_04_drift_tree")
+	app.modal_history.clear()
+	app.close_modal()

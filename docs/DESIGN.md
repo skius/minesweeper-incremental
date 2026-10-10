@@ -4,7 +4,7 @@
 An abandoned planetary survey network wakes up one patch of land at a time. The player reads Minesweeper clues, harvests light, builds tools, and gradually teaches a fleet to do the fieldwork. A modern Windows 95/XP-inspired field terminal gives the game a tactile identity: raised slate keycaps, periwinkle title bars, inset LED counters and a procedural evening desktop. The board is the visual centre; effects originate on its tiles.
 
 ## Rules and progression
-- Left click reveals; right click flags; click a satisfied clue to chord. Keyboard arrows, Space and F offer full board control.
+- Left click reveals; right click flags; Chord relay unlocks satisfied-clue digging after field 1 (60 light, no core). Keyboard arrows, Space and F offer full board control.
 - First reveal clears a safe neighbourhood. Zero cells propagate. Clue numbers never lie. Flagging earns nothing until verified, preventing farming.
 - Each attempt has two hull segments. An unprotected strike loses half its cargo (rounded up), drains energy and resets the chain. The second loses the attempt and all remaining cargo. Purchased equipment and banked light/cores stay safe; retry is immediate on a fresh deterministic layout. One wrong chord can cause at most one strike. Shield absorbs the first strike but does not preserve a perfect rating.
 - Free rechargeable probe guarantees a way through ambiguous boards. Optional drones only make logically valid deductions; late Oracle probes resolve stalemates.
@@ -18,7 +18,7 @@ An abandoned planetary survey network wakes up one patch of land at a time. The 
 - A fresh game shows a 6 × 5 field, Pause and an optional Legend. Pulse appears after the first opening; currencies and Grow appear after the first clear. Equipment controls exist only when owned. Atlas appears after the first region.
 - After the first Lens purchase, one core buys either Crossbeam or Scout immediately. The next clear can fund the other. The tree shows only owned nodes and reachable nodes at the current milestone.
 - The old permanent shop and regional sidebar are gone. Hover reveals clue/tool information. The separate zoomable tree reveals nearby nodes as connections are acquired; descriptions and animated demonstrations are contextual.
-- Fifty nodes form six branching routes from a central lens: beams, fleet, energy, craft, discovery and alchemy. Prerequisites and site milestones govern discovery; resources govern purchase order. Branches are not mutually exclusive.
+- Sixty-five nodes form seven branching routes from a central lens: beams, fleet, energy, craft, discovery, alchemy and drift. Prerequisites and site milestones govern discovery; resources govern purchase order. Branches are not mutually exclusive.
 - Buried plates begin at site 7. Deductions remain classic Minesweeper; a proved-safe plated tile still needs excavation. Manual drilling, fleet chassis and bore lasers break multiple layers. Pulses always penetrate their safe target.
 - From site 7, fields rotate through shelves, shafts and geodes, with plate seams and crystal pockets, within 26 × 18. Terrain owns its deterministic random streams and preserves clues. Old saves keep their exact current board and banked earnings; finishing that board now completes its site. Already-cleared intermediate checkpoints settle once into a completed site without paying old salvage twice.
 - Field zoom, an overview and keyboard following preserve legibility in small windows. Energy uses the same symbol on storage and tool costs; a selected footprint previews its actual price, including recycling. Upgrade demonstrations are recorded from real miniature game sessions.
@@ -42,3 +42,30 @@ Readable clues take precedence over effects. Reveals have a staggered lift, mint
 
 ## Scope boundary
 Single-player, offline, one save profile with backup, no monetisation, networking, Steam API, accounts or external dependencies. Art, music and SFX are generated from code. No mandatory real-time waiting.
+
+
+## Moving-ground rules (1.4)
+
+New campaign fields from index 32 drift every 12/10/8/6 seconds by region, with
+1/2/3/4 orthogonal mine swaps per wave. Both endpoints must be hidden, unflagged,
+unworked, outside crystal pockets and outside protected ground. Mine count is
+conserved and every clue is recomputed before automation acts. Trials stay static.
+
+Pointer/keyboard shelter is 5×5, enlarged to 7×7 by Ballast. Its additional halo
+keeps all interior clue values fixed. All recently departed zones retain their own
+1.5-second grace; leaving the board retains the last focus. Clicking/partially
+excavating permanently surveys a cell; removing an ordinary flag releases its
+single-cell protection. Moorings explicitly reward flags placed by hand with a
+permanent 3×3 anchor. Anchors have their own clue-preserving halo.
+
+The new branch adds an aimed 4-energy anchor (later 7×7 with plate cracking),
+Pulse/beam/chord anchoring, safe wake tracing, wake excavation, drift energy,
+fleet mine interception, 12-second Stasis, half-cost beams during Stasis, and a
+quarter-remaining field freeze/fleet finisher. Empty waves never pay energy.
+Marked wakes are reserved atomically before callbacks; drones always deduce afresh.
+
+Save schema 4 persists timers, deterministic wave sequence, surveyed/anchored/trace
+arrays, cursor and every grace timer. Earlier saves retain their exact static board
+until the next newly started field and keep their formerly available chord ability.
+UI uses one mint shelter outline, small anchor corners, safe-wake diamonds, a clock
+and brief changed-clue outlines. The optional illustrated legend mirrors these marks.

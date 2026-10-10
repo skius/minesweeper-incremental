@@ -145,7 +145,11 @@ func run() -> void:
 		if item.pre != "":
 			check(not Content.upgrade(item.pre).is_empty(), "prerequisite exists")
 		count += 1
-	check(count == 50, "50 branching upgrades")
+	check(count == 65, "65 branching upgrades")
+	for a in Content.UPGRADES:
+		for b in Content.UPGRADES:
+			if a.id<b.id:
+				check(Content.tree_position(a).distance_to(Content.tree_position(b))>=80,"tree nodes have disjoint hit areas even at minimum zoom: "+a.id+" / "+b.id)
 	# Depth must survive reloads and cannot pay out twice.
 	var deep := GameSession.new()
 	deep.index = 20

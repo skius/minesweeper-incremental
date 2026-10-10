@@ -28,4 +28,4 @@ environment/defaults/default_clear_color=Color(0.035,0.065,0.09,1)
 driver/enable_input=false
 
 [application/config]
-version="1.3.0"
+version="1.4.0"

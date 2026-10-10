@@ -38,7 +38,7 @@ static func act(s: GameSession) -> bool:
 		if gain > chord_gain:
 			chord_gain = gain
 			best_chord = i
-	if best_chord >= 0:
+	if best_chord >= 0 and s.can_chord():
 		s.chord(best_chord)
 		return true
 	var moves := b.deductions(true)
@@ -53,7 +53,7 @@ static func act(s: GameSession) -> bool:
 				if gain > chord_gain:
 					chord_gain = gain
 					best_chord = i
-		if best_chord >= 0:
+		if best_chord >= 0 and s.can_chord():
 			s.chord(best_chord)
 			return true
 	if s.probe_charge >= 1 and (moves.safe.size() < 2 or s.has("prism")):

@@ -64,6 +64,19 @@ func _draw() -> void:
 			Palette.crystal(self,rect.position+Vector2(rect.size.x-5,5),8)
 		if demo.marks.has(i) and progress>0:
 			draw_rect(rect,Color(focus_color,0.6),false,1)
+		if frame.drift.anchors[i]>0:
+			draw_line(rect.position+Vector2(3,7),rect.position+Vector2(3,3),Palette.MINT,2)
+			draw_line(rect.position+Vector2(3,3),rect.position+Vector2(7,3),Palette.MINT,2)
+		if frame.drift.traces[i]>0 and state==MineBoard.HIDDEN:
+			var center_tile := rect.get_center()
+			draw_polyline(PackedVector2Array([center_tile+Vector2(0,-5),center_tile+Vector2(5,0),center_tile+Vector2(0,5),center_tile+Vector2(-5,0),center_tile+Vector2(0,-5)]),Palette.INK,2,true)
+		if demo.id=="ballast":
+			var dx: int=absi(i%int(board.width)-demo.target%int(board.width))
+			var dy: int=absi(i/int(board.width)-demo.target/int(board.width))
+			if maxi(dx,dy)<=int(frame.drift.radius):
+				draw_rect(rect,Color(Palette.MINT,0.6),false,1)
+		if frame.drift.stasis>0 or frame.drift.converged:
+			draw_rect(rect,Color(Palette.MINT,0.4),false,1)
 		if order>=0 and progress>0 and progress<0.9:
 			draw_rect(rect,Color(focus_color,0.45),false,1)
 	var center := Vector2(247,44)

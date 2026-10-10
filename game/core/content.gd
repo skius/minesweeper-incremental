@@ -1,7 +1,7 @@
 class_name Content
 extends RefCounted
 
-const VERSION = "1.3.0"
+const VERSION = "1.4.0"
 const REGION_LENGTH = 16
 const CAMPAIGN_LENGTH = 96
 # Width, height, density, plating, terrain. Each optional pair offers a compact
@@ -25,6 +25,21 @@ const REGIONS = [
 
 # Each purchase changes a rule, ability, information source or automation behaviour.
 const UPGRADES = [
+	{"id":"chording","name":"Chord relay","group":2,"cost":60,"cores":0,"rank":1,"pre":"lens","icon":"chording","desc":"Click a satisfied clue to dig all its unflagged neighbours.","branch":3,"depth":1,"side":0},
+	{"id":"ballast","name":"Survey ballast","group":2,"cost":1200,"cores":2,"rank":32,"pre":"lens","icon":"ballast","desc":"Your pointer protects a 7×7 area instead of 5×5. Clues inside stay stable.","branch":6,"depth":1,"side":0},
+	{"id":"mooring","name":"Flag moorings","group":2,"cost":1500,"cores":2,"rank":34,"pre":"ballast","icon":"mooring","desc":"A flag placed by hand permanently anchors a 3×3 patch around it.","branch":6,"depth":1,"side":0},
+	{"id":"anchor","name":"Ground anchor","group":2,"cost":1800,"cores":2,"rank":36,"pre":"ballast","icon":"anchor","desc":"New tool: permanently pin a 5×5 patch and its clues. Costs 4 energy.","branch":6,"depth":1,"side":0},
+	{"id":"tracer","name":"Wake tracer","group":2,"cost":2100,"cores":3,"rank":40,"pre":"ballast","icon":"tracer","desc":"Moving mines leave a visible, permanently safe tile in their wake.","branch":6,"depth":1,"side":0},
+	{"id":"induction","name":"Drift dynamo","group":2,"cost":2600,"cores":3,"rank":44,"pre":"mooring","icon":"induction","desc":"Each wave that moves mines generates 2 tool energy.","branch":6,"depth":1,"side":0},
+	{"id":"grounded_pulse","name":"Rooted pulse","group":2,"cost":3200,"cores":3,"rank":48,"pre":"anchor","icon":"grounded_pulse","desc":"Every safe Pulse opening permanently anchors the surrounding 3×3 patch.","branch":6,"depth":1,"side":0},
+	{"id":"beam_anchor","name":"Survey lattice","group":2,"cost":3700,"cores":4,"rank":54,"pre":"anchor","icon":"beam_anchor","desc":"Beams permanently anchor their entire footprint, including covered mines.","branch":6,"depth":1,"side":0},
+	{"id":"interceptor","name":"Mine interceptor","group":2,"cost":4000,"cores":4,"rank":58,"pre":"tracer","icon":"interceptor","desc":"Your active fleet catches and flags one moving mine each wave.","branch":6,"depth":1,"side":0},
+	{"id":"backwash","name":"Wake harvester","group":2,"cost":4600,"cores":4,"rank":62,"pre":"tracer","icon":"backwash","desc":"Drifting mines uncover their vacated tiles, shattering every plate there.","branch":6,"depth":1,"side":0},
+	{"id":"stasis","name":"Stasis clock","group":2,"cost":5100,"cores":4,"rank":66,"pre":"induction","icon":"stasis","desc":"New tool: freeze all mine movement for 12 seconds. Costs 8 energy.","branch":6,"depth":1,"side":0},
+	{"id":"clue_anchor","name":"Clue moorings","group":2,"cost":5700,"cores":5,"rank":72,"pre":"beam_anchor","icon":"clue_anchor","desc":"A successful chord permanently anchors a 5×5 patch around the clue.","branch":6,"depth":1,"side":0},
+	{"id":"stasis_engine","name":"Stillwater engine","group":2,"cost":6300,"cores":5,"rank":78,"pre":"stasis","icon":"stasis_engine","desc":"During Stasis, every beam costs half as much energy.","branch":6,"depth":1,"side":0},
+	{"id":"deep_anchor","name":"Bedrock driver","group":2,"cost":7000,"cores":5,"rank":84,"pre":"anchor","icon":"deep_anchor","desc":"Ground anchor expands to 7×7 and cracks a layer of plating throughout.","branch":6,"depth":1,"side":0},
+	{"id":"convergence","name":"Final stillness","group":2,"cost":8500,"cores":6,"rank":90,"pre":"backwash","icon":"convergence","desc":"With a quarter of safe ground left, freeze the whole field and call a fleet cycle.","branch":6,"depth":1,"side":0},
 	{"id":"lens","name":"Survey lens","group":-1,"cost":24,"cores":0,"rank":0,"pre":"","icon":"lens","desc":"A survey lens lights up the eight neighbours of any clue.","branch":-1,"depth":0,"side":0},
 	{"id":"salvage","name":"Charge reclamation","group":2,"cost":100,"cores":1,"rank":1,"pre":"lens","icon":"flag","desc":"Correct flags add 8 light each to your clear reward.","branch":5,"depth":1,"side":-1},
 	{"id":"probe2","name":"Twin pulse","group":0,"cost":140,"cores":1,"rank":1,"pre":"lens","icon":"pulse","desc":"Your free probe opens two safe tiles instead of one.","branch":0,"depth":1,"side":-1},
@@ -40,7 +55,7 @@ const UPGRADES = [
 	{"id":"pair","name":"Wingmate","group":1,"cost":850,"cores":3,"rank":11,"pre":"drone","icon":"drone","desc":"A second drone joins. Both act each cycle, with independent deductions.","branch":1,"depth":2,"side":-1},
 	{"id":"reservoir","name":"Pulse reservoir","group":0,"cost":650,"cores":2,"rank":12,"pre":"focus","icon":"battery","desc":"Store two free pulses. Save one for the next uncertain corner.","branch":0,"depth":2,"side":-1},
 	{"id":"flywheel","name":"Flywheel","group":2,"cost":850,"cores":2,"rank":15,"pre":"battery","icon":"pulse","desc":"A successful chord fully recharges one free Pulse.","branch":2,"depth":1,"side":1},
-	{"id":"chord","name":"Cascade circuit","group":2,"cost":1100,"cores":3,"rank":16,"pre":"chain","icon":"cross","desc":"Chording safely triggers other satisfied clues in a continuous cascade.","branch":3,"depth":2,"side":1},
+	{"id":"chord","name":"Cascade circuit","group":2,"cost":1100,"cores":3,"rank":16,"pre":"chording","icon":"cross","desc":"Chording safely triggers other satisfied clues in a continuous cascade.","branch":3,"depth":2,"side":1},
 	{"id":"harvester","name":"Charge painter","group":2,"cost":950,"cores":2,"rank":17,"pre":"salvage","icon":"flag","desc":"Beams mark every charge in their footprint, ready for chording.","branch":5,"depth":2,"side":-1},
 	{"id":"diagonal","name":"Eightfold beam","group":0,"cost":1100,"cores":2,"rank":18,"pre":"cross","icon":"cross","desc":"Crossbeam grows four diagonal arms.","branch":0,"depth":3,"side":-1},
 	{"id":"logic","name":"Pattern engine","group":1,"cost":1600,"cores":3,"rank":19,"pre":"flagger","icon":"prism","desc":"Drones compare overlapping clue groups to find subtler safe moves.","branch":1,"depth":3,"side":-1},
@@ -137,8 +152,8 @@ static func title_for(index: int) -> String:
 	var nouns = ["First footsteps", "A quiet signal", "Under the surface", "The long way home", "Fragments of light", "A promising frequency", "Small discoveries", "The shape of silence", "Another little sunrise", "A line in the dust", "Where we left off", "Signals from the deep", "Almost a memory", "An open horizon", "The last approach", "Restore the relay"]
 	return nouns[index % REGION_LENGTH]
 
-const BRANCH_NAMES = ["BEAMS", "FLEET", "ENERGY", "CRAFT", "DISCOVERY", "ALCHEMY"]
-const BRANCH_COLORS = ["7bdde8","efbf77","e9dd97","ed9b87","b6a4e5","8bd6a6"]
+const BRANCH_NAMES = ["BEAMS", "FLEET", "ENERGY", "CRAFT", "DISCOVERY", "ALCHEMY", "DRIFT"]
+const BRANCH_COLORS = ["7bdde8","efbf77","e9dd97","ed9b87","b6a4e5","8bd6a6","8bc9c0"]
 
 static func strata_for(_index: int, _trial: int = -1) -> int:
 	return 1
@@ -151,10 +166,11 @@ static func legacy_strata_for(index: int, trial: int = -1) -> int:
 
 # Positions follow dependency forks, so branches never double back across their parent.
 const TREE_LAYOUT = {
+"chording":[3,245,60],"ballast":[6,145,0],"mooring":[6,245,-70],"anchor":[6,245,45],"tracer":[6,395,-130],"induction":[6,355,-55],"grounded_pulse":[6,355,55],"beam_anchor":[6,405,125],"interceptor":[6,465,-185],"backwash":[6,565,-185],"stasis":[6,465,-55],"clue_anchor":[6,505,155],"stasis_engine":[6,575,-55],"deep_anchor":[6,575,65],"convergence":[6,690,-155],
 	"probe2":[0,145,0],"focus":[0,240,-60],"reservoir":[0,345,-100],"cross":[0,240,60],"diagonal":[0,345,115],"perforator":[0,460,145],"line":[0,345,10],"vertical":[0,460,35],"nova":[0,460,-55],"aftershock":[0,560,-70],
 	"drone":[1,145,0],"flagger":[1,245,-60],"logic":[1,345,-90],"oracle":[1,455,-125],"synchrony":[1,455,-25],"pair":[1,245,60],"excavator":[1,345,100],"fleet":[1,455,120],"swarm":[1,555,140],"overdrive":[1,650,160],
 	"battery":[2,145,0],"flywheel":[2,245,-60],"kinetic":[2,345,-90],"capacitor":[2,245,60],"supercap":[2,345,95],"resonance":[2,445,125],"recycler":[2,555,150],
-	"chain":[3,145,0],"drill":[3,245,-60],"fracture":[3,345,-90],"seismic":[3,455,-125],"chord":[3,245,60],"conductor":[3,355,100],
+	"chain":[3,145,0],"drill":[3,245,-60],"fracture":[3,345,-90],"seismic":[3,455,-125],"chord":[3,355,60],"conductor":[3,465,100],
 	"prism":[4,145,0],"compass":[4,245,0],"cartogram":[4,355,-75],"relay":[4,355,70],"launchpad":[4,455,75],"autodescent":[4,555,85],"aurora":[4,650,100],"legacy":[4,745,115],
 	"salvage":[5,145,0],"shield":[5,245,-80],"sentry":[5,365,-125],"harvester":[5,245,80],"echochamber":[5,365,125],"crucible":[5,475,145],"bounty":[5,260,0],"magnet":[5,380,0]
 }
@@ -163,5 +179,5 @@ static func tree_position(item: Dictionary) -> Vector2:
 	if item.id == "lens":
 		return Vector2.ZERO
 	var placement: Array = TREE_LAYOUT[item.id]
-	var direction := Vector2.from_angle(placement[0]*TAU/6-PI/2)
+	var direction := Vector2.from_angle(placement[0]*TAU/BRANCH_NAMES.size()-PI/2)
 	return direction*placement[1]+direction.orthogonal()*placement[2]

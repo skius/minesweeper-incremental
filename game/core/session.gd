@@ -2,6 +2,7 @@ class_name GameSession
 extends RefCounted
 
 var board := MineBoard.new()
+var drift := FieldDrift.new()
 var index: int = 0
 var stratum: int = 0
 var layer_ready: bool = false
@@ -82,6 +83,8 @@ func start_board(reset_attempt: bool = true) -> void:
 	layer_ready = false
 	var spec := Content.contract(index, trial, stratum)
 	board.setup(spec.width, spec.height, spec.mines, spec.seed+attempt*15485863, spec.crust, spec.form)
+	drift = FieldDrift.new()
+	drift.setup(board,index,trial)
 	board_seconds = 0
 	energy = capacity()
 	probe_charge = 1
@@ -141,6 +144,8 @@ func buy(id: String) -> bool:
 	credits -= int(item.cost)
 	cores -= int(item.cores)
 	upgrades.append(id)
+	if id == "ballast":
+		set_focus(drift.focus)
 	energy = minf(energy + 4, capacity())
 	if id == "reservoir":
 		probe_charge = 2
@@ -180,6 +185,8 @@ func break_plates(i: int, power: int, source: String) -> int:
 	var removed := mini(power,board.plates[i])
 	if removed<=0:
 		return 0
+	ensure_drift()
+	drift.surveyed[i] = 1
 	board.plates[i]-=removed
 	excavations+=1
 	if source=="manual":
@@ -194,6 +201,11 @@ func break_plates(i: int, power: int, source: String) -> int:
 func _reveal(i: int, source: String = "manual") -> void:
 	if failed or finished or layer_ready or i < 0 or i >= board.cells.size():
 		return
+	if source == "manual" and action_depth==1:
+		set_focus(i)
+	ensure_drift()
+	if board.cells[i] == MineBoard.HIDDEN:
+		drift.surveyed[i] = 1
 	if board.cells[i] == MineBoard.OPEN:
 		if source == "manual":
 			chord(i)
@@ -292,7 +304,10 @@ func _reveal(i: int, source: String = "manual") -> void:
 func flag(i: int) -> void:
 	if failed or finished or layer_ready:
 		return
+	set_focus(i)
 	if board.toggle_flag(i):
+		if has("mooring") and board.cells[i] == MineBoard.FLAG:
+			drift.anchor_area(board,i,1)
 		events.append({"type":"flag","cell":i,"auto":false})
 
 func chord(i: int) -> void:
@@ -303,6 +318,10 @@ func chord(i: int) -> void:
 
 func _chord(i: int) -> void:
 	if failed or finished:
+		return
+	set_focus(i)
+	if not can_chord():
+		events.append({"type":"blocked_action","reason":"chording","cell":i})
 		return
 	var targets := board.chord_targets(i)
 	if has("conductor") and i >= 0 and i < board.cells.size() and board.cells[i] == MineBoard.OPEN:
@@ -323,6 +342,8 @@ func _chord(i: int) -> void:
 			if strikes!=strikes_before:
 				break # One mistaken chord costs at most one hull hit.
 	if strikes == strikes_before:
+		if has("clue_anchor"):
+			drift.anchor_area(board,i,2)
 		if has("flywheel"):
 			probe_charge = minf(probe_capacity(),probe_charge+1)
 		if has("synchrony") and not cascade_guard:
@@ -358,13 +379,14 @@ func cross_cells(i: int) -> Array[int]:
 	return result
 
 func tool_cost(id: String) -> float:
-	return {"probe":0.0,"cross":6.0,"line":10.0,"nova":16.0,"overdrive":12.0}.get(id, 999.0)
+	var cost: float = {"probe":0.0,"cross":6.0,"line":10.0,"nova":16.0,"overdrive":12.0,"anchor":4.0,"stasis":8.0}.get(id, 999.0)
+	return cost*0.5 if drift.stasis>0 and has("stasis_engine") and id in ["cross","line","nova"] else cost
 
 func minimum_tool_cost(id: String) -> float:
 	return 2.0 if has("recycler") and id in ["cross","line","nova"] else tool_cost(id)
 
 func tool_available(id: String) -> bool:
-	return (id=="probe" or has(id)) and not (trial>=0 and trial%2==0 and id!="probe")
+	return (id=="probe" or has(id)) and not (trial>=0 and trial%2==0 and id!="probe") and (drift.enabled if id in ["anchor","stasis"] else true)
 
 func effective_tool_cost(id: String, i: int) -> float:
 	var cost := tool_cost(id)
@@ -382,6 +404,8 @@ func tool_cells(id: String, i: int) -> Array[int]:
 	var result: Array[int] = []
 	if i < 0 or i >= board.cells.size():
 		return result
+	if id == "anchor":
+		return drift.area(board,i,3 if has("deep_anchor") else 2)
 	if id == "cross":
 		return cross_cells(i)
 	if id == "line":
@@ -409,6 +433,7 @@ func use_tool(id: String, i: int = -1) -> bool:
 func _use_tool(id: String, i: int = -1) -> bool:
 	if failed or finished or layer_ready or not tool_available(id):
 		return false
+	set_focus(i)
 	if id == "probe":
 		if probe_charge < 1:
 			return false
@@ -428,11 +453,27 @@ func _use_tool(id: String, i: int = -1) -> bool:
 		overdrive_seconds = 12
 		events.append({"type":"tool","id":id,"cell":i})
 		return true
+	if id == "stasis":
+		if not board.generated or drift.stasis>0 or drift.converged:
+			return false
+		energy -= tool_cost(id)
+		drift.stasis = 12
+		events.append({"type":"tool","id":id,"cell":i})
+		return true
 	if i < 0 or i >= board.cells.size():
 		return false
 	if not board.generated:
 		reveal(i)
 	var targets := tool_cells(id, i)
+	if id == "anchor":
+		if not drift.anchor_area(board,i,3 if has("deep_anchor") else 2):
+			return false
+		energy -= tool_cost(id)
+		if has("deep_anchor"):
+			for n in targets:
+				break_plates(n,1,"anchor")
+		events.append({"type":"tool","id":id,"cell":i})
+		return true
 	var any := false
 	for n in targets:
 		if board.mines[n] == 0 and board.cells[n] != MineBoard.OPEN:
@@ -441,6 +482,9 @@ func _use_tool(id: String, i: int = -1) -> bool:
 		events.append({"type":"blocked_action","reason":"empty","cell":i})
 		return false
 	energy -= effective_tool_cost(id,i)
+	if has("beam_anchor"):
+		for n in targets:
+			drift.anchors[n] = 1
 	for n in targets:
 		if has("harvester") and board.mines[n] == 1 and board.cells[n] == MineBoard.HIDDEN:
 			board.toggle_flag(n)
@@ -472,13 +516,16 @@ func probe_one(source: String, target: int = -1) -> void:
 				best = score
 				cell = i
 	if cell >= 0:
+		ensure_drift()
+		if has("grounded_pulse"):
+			drift.anchor_area(board,cell,1)
 		if board.cells[cell] == MineBoard.FLAG:
 			board.cells[cell] = MineBoard.HIDDEN
 		break_plates(cell,board.plates[cell],"pulse")
 		reveal(cell, source)
 
 func tick(delta: float) -> void:
-	if failed or finished:
+	if failed or finished or action_depth>0:
 		return
 	if not board.generated and has("launchpad") and drones_enabled and not (trial>=0 and trial%2==0):
 		drone_clock += delta
@@ -494,6 +541,11 @@ func tick(delta: float) -> void:
 	probe_charge = minf(probe_capacity(), probe_charge + delta / 9.0)
 	overclock = maxf(0, overclock - delta)
 	overdrive_seconds = maxf(0,overdrive_seconds-delta)
+	ensure_drift()
+	if drift.tick(board,delta):
+		shift_field()
+	if finished or failed:
+		return
 	if drone_count() == 0 or not drones_enabled or (trial >= 0 and trial % 2 == 0):
 		return
 	drone_clock += delta
@@ -530,6 +582,11 @@ func drone_cycle() -> void:
 			return
 
 func check_completion() -> void:
+	if action_depth==0 and not failed and not finished and board.generated and drift.enabled and has("convergence") and not drift.converged and board.safe_remaining() <= (board.cells.size()-board.mine_count)/4:
+		drift.converged = true
+		events.append({"type":"convergence"})
+		if drones_enabled:
+			drone_cycle()
 	if action_depth>0 or failed or finished or layer_ready or not board.completed():
 		return
 	var correct_flags := 0
@@ -569,13 +626,14 @@ func _bank_clear(correct_flags: int, flag_reward: int) -> void:
 	events.append({"type":"complete","reward":last_reward.duplicate()})
 
 func to_dict() -> Dictionary:
-	return {"version":3,"damage":damage,"attempt":attempt,"failed":failed,"stratum":stratum,"layer_ready":layer_ready,"excavations":excavations,"manual_excavations":manual_excavations,"index":index,"trial":trial,"credits":credits,"cores":cores,"upgrades":upgrades,"medals":medals,"trial_medals":trial_medals,"total_light":total_light,"total_reveals":total_reveals,"total_flags":total_flags,"total_drone":total_drone,"total_strikes":total_strikes,"play_seconds":play_seconds,"board_seconds":board_seconds,"energy":energy,"probe_charge":probe_charge,"drone_clock":drone_clock,"overclock":overclock,"overdrive_seconds":overdrive_seconds,"descent_clock":descent_clock,"chain":chain,"strikes":strikes,"manual_actions":manual_actions,"board_earned":board_earned,"finished":finished,"completed_campaign":completed_campaign,"drones_enabled":drones_enabled,"last_reward":last_reward,"paid_flags":paid_flags,"seen_intro":seen_intro,"livery":livery,"board":board.to_dict()}
+	ensure_drift()
+	return {"version":4,"drift":drift.to_dict(),"damage":damage,"attempt":attempt,"failed":failed,"stratum":stratum,"layer_ready":layer_ready,"excavations":excavations,"manual_excavations":manual_excavations,"index":index,"trial":trial,"credits":credits,"cores":cores,"upgrades":upgrades,"medals":medals,"trial_medals":trial_medals,"total_light":total_light,"total_reveals":total_reveals,"total_flags":total_flags,"total_drone":total_drone,"total_strikes":total_strikes,"play_seconds":play_seconds,"board_seconds":board_seconds,"energy":energy,"probe_charge":probe_charge,"drone_clock":drone_clock,"overclock":overclock,"overdrive_seconds":overdrive_seconds,"descent_clock":descent_clock,"chain":chain,"strikes":strikes,"manual_actions":manual_actions,"board_earned":board_earned,"finished":finished,"completed_campaign":completed_campaign,"drones_enabled":drones_enabled,"last_reward":last_reward,"paid_flags":paid_flags,"seen_intro":seen_intro,"livery":livery,"board":board.to_dict()}
 
 static func from_dict(data: Dictionary) -> GameSession:
-	if not MineBoard.integer_value(data.get("version"),1,3) or not data.get("board") is Dictionary:
+	if not MineBoard.integer_value(data.get("version"),1,4) or not data.get("board") is Dictionary:
 		return null
 	var version: int = int(data.version)
-	if version==3 and (not data.has("damage") or not data.has("attempt") or not data.has("failed")):
+	if version>=3 and (not data.has("damage") or not data.has("attempt") or not data.has("failed")):
 		return null
 	if not MineBoard.integer_value(data.get("damage",0),0,2) or not MineBoard.integer_value(data.get("attempt",0),0,100000000):
 		return null
@@ -622,6 +680,19 @@ static func from_dict(data: Dictionary) -> GameSession:
 		if not result.paid_flags.has(int(cell)):
 			result.paid_flags.append(int(cell))
 	result.board = loaded_board
+	if version == 4:
+		if not data.get("drift") is Dictionary:
+			return null
+		result.drift = FieldDrift.restore(data.drift,loaded_board,result.index,result.trial)
+		if result.drift == null:
+			return null
+	else:
+		result.drift = FieldDrift.new()
+		result.drift.setup(loaded_board,result.index,result.trial)
+		result.drift.enabled = false # Exact legacy field stays static until the next site.
+		if result.index>=1 or result.has("chord") or result.has("flywheel") or result.has("synchrony"):
+			if not result.has("chording"):
+				result.upgrades.append("chording")
 	result.energy = clampf(result.energy, 0, result.capacity())
 	result.probe_charge = clampf(result.probe_charge, 0, result.probe_capacity())
 	var old_depth := Content.legacy_strata_for(result.index,result.trial)
@@ -687,3 +758,43 @@ func excavation_power(source: String) -> int:
 func advance_layer() -> bool:
 	# Retained for old callers; every field is now a complete expedition.
 	return false
+
+
+func can_chord() -> bool:
+	return has("chording") or has("chord") or has("conductor")
+
+func ensure_drift() -> void:
+	# Test/demo fixtures can replace their board. Production uses start_board().
+	if drift.surveyed.size() != board.cells.size():
+		drift = FieldDrift.new()
+		drift.setup(board,index,trial)
+
+func set_focus(cell: int) -> void:
+	ensure_drift()
+	drift.set_focus(board,cell,3 if has("ballast") else 2)
+
+func shift_field() -> void:
+	if failed or finished or action_depth>0 or not drift.enabled or not board.generated or drift.stasis>0 or drift.converged:
+		return
+	var wave := drift.move_mines(board)
+	if wave.moves.is_empty():
+		return
+	action_depth += 1
+	# Reserve every wake before any reward can trigger further reveals.
+	if has("tracer") or has("backwash"):
+		for pair in wave.moves:
+			drift.surveyed[pair[0]] = 1
+			drift.traces[pair[0]] = 1
+	if has("induction"):
+		energy = minf(capacity(),energy+2)
+	if has("interceptor") and drones_enabled and drone_count()>0:
+		var caught: int = wave.moves[0][1]
+		board.toggle_flag(caught)
+		events.append({"type":"flag","cell":caught,"auto":true})
+	if has("backwash"):
+		for pair in wave.moves:
+			break_plates(pair[0],board.plates[pair[0]],"wake")
+			reveal(pair[0],"wake")
+	events.append({"type":"drift","cells":wave.clues,"moves":wave.moves})
+	action_depth -= 1
+	check_completion()

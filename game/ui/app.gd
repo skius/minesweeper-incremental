@@ -136,6 +136,8 @@ func layout_ui() -> void:
 		if hud.has("currency"):
 			hud.currency.position=Vector2((size.x-hud.currency.size.x)/2,32)
 		hud.legend.position=Vector2(field_width-136,board_view.size.y-56)
+		if hud.has("drift"):
+			hud.drift.position=Vector2(field_width-356,14)
 		hud.cue.position=Vector2((field_width-hud.cue.size.x)/2,board_view.size.y-57)
 		if hud.has("flag_mode"):
 			hud.flag_mode.position=Vector2(field_width-60,14)
@@ -368,6 +370,11 @@ func build_field() -> void:
 	ui.add_child(board_view)
 	hud.legend=button(board_view,"Legend",Rect2(0,0,112,32),show_legend)
 	hud.legend.tooltip_text="Field symbols · L"
+	if session.drift.enabled:
+		hud.drift=button(board_view,"",Rect2(0,14,132,32),show_drift_legend)
+		icon(hud.drift,"upgrade:ballast",Rect2(8,4,24,24),Palette.MINT,22)
+		hud.drift_time=label_at(hud.drift,"",Rect2(40,3,84,26),15,Palette.MINT,true)
+		hud.drift.tooltip_text="Moving mines · click for field symbols"
 	if ui_stage>=1:
 		hud.flag_mode=symbol_button(board_view,"flag",Rect2(0,14,36,32),toggle_flag_mode,"Flag mode · left click places flags · F")
 	if session.index>=3:
@@ -410,11 +417,11 @@ func build_tools() -> void:
 	if ui_stage==0:
 		return
 	var ids: Array[String]=["probe"]
-	for id in ["cross","line","nova","overdrive"]:
+	for id in ["cross","line","nova","overdrive","anchor","stasis"]:
 		if session.tool_available(id):
 			ids.append(id)
 	var completed := session.failed or session.finished
-	var has_energy := not completed and (session.tool_available("cross") or session.tool_available("overdrive") or (session.has("oracle") and session.drone_count()>0))
+	var has_energy := not completed and (ids.size()>1 or (session.has("oracle") and session.drone_count()>0))
 	var row_width := ids.size()*80.0+(ids.size()-1)*8.0
 	var dock_width := 280.0 if completed else maxf(176,row_width+24)
 	if has_energy:
@@ -439,7 +446,7 @@ func build_tools() -> void:
 		var glyph := icon(b,tool_symbol(id),Rect2(16,6,48,48),Palette.MINT,33)
 		glyph.mounted=true
 		glyph.motion=settings.motion
-		var shortcut := label_at(b,str({"probe":1,"cross":2,"line":3,"nova":4,"overdrive":5}[id]),Rect2(6,4,16,20),14,Palette.MUTED)
+		var shortcut := label_at(b,str({"probe":1,"cross":2,"line":3,"nova":4,"overdrive":5,"anchor":6,"stasis":7}[id]),Rect2(6,4,16,20),14,Palette.MUTED)
 		shortcut.tooltip_text="Keyboard shortcut"
 		b.tooltip_text=tool_help(id)
 		tool_buttons[id]=b
@@ -463,6 +470,8 @@ func tool_symbol(id: String) -> String:
 			return "upgrade:vertical" if session.has("vertical") else "upgrade:line"
 		"nova":
 			return "upgrade:aftershock" if session.has("aftershock") else "upgrade:nova"
+		"anchor":
+			return "upgrade:deep_anchor" if session.has("deep_anchor") else "upgrade:anchor"
 	return "upgrade:"+id
 
 func tool_help(id: String) -> String:
@@ -471,7 +480,7 @@ func tool_help(id: String) -> String:
 		return "Pulse · %d safe opening%s\n%s · 9s recharge" % [count,"s" if count>1 else "","Aim near your cursor" if session.has("focus") else "Free"]
 	var symbol := tool_symbol(id).trim_prefix("upgrade:")
 	var name_value: String=Content.upgrade(symbol).name
-	var shape: String={"cross":"8 arms" if session.has("diagonal") else "Cross","line":"Row + column" if session.has("vertical") else "Full row","nova":"7 × 7" if session.has("aftershock") else "5 × 5","overdrive":"10× fleet · 12s"}.get(id,"")
+	var shape: String={"cross":"8 arms" if session.has("diagonal") else "Cross","line":"Row + column" if session.has("vertical") else "Full row","nova":"7 × 7" if session.has("aftershock") else "5 × 5","overdrive":"10× fleet · 12s","anchor":"7 × 7" if session.has("deep_anchor") else "5 × 5","stasis":"Freeze · 12s"}.get(id,"")
 	return "%s · %s\n%d energy" % [name_value,shape,session.tool_cost(id)]
 
 func descend_or_complete() -> void:
@@ -487,6 +496,10 @@ func descend_or_complete() -> void:
 func update_hud() -> void:
 	if screen != "play" or session == null or hud.is_empty():
 		return
+	if hud.has("drift_time"):
+		var d := session.drift
+		hud.drift_time.text="PINNED" if d.converged else ("%ds ❚❚" % ceili(d.stasis) if d.stasis>0 else "%ds" % ceili(d.remaining))
+		hud.drift_time.modulate=Palette.GOLD if d.remaining<=2 and d.stasis<=0 and not d.converged else Color.WHITE
 	if hud.has("field_status"):
 		hud.field_status.queue_redraw()
 	if hud.has("light"):
@@ -522,8 +535,10 @@ func update_hud() -> void:
 	hud.cue.tooltip_text = "Aim · Esc cancels" if selected_tool!="" else ("Flag · right mouse / F" if b.generated else "Reveal · left mouse / Enter")
 	for id in tool_buttons:
 		var btool: Button = tool_buttons[id]
-		var running: bool=id=="overdrive" and session.overdrive_seconds>0
+		var running: bool=(id=="overdrive" and session.overdrive_seconds>0) or (id=="stasis" and session.drift.stasis>0)
 		btool.disabled = running or (session.probe_charge<1 if id=="probe" else session.energy<session.minimum_tool_cost(id)) or session.failed or session.finished or session.layer_ready
+		if id=="stasis" and (session.drift.converged or not session.board.generated):
+			btool.disabled=true
 		var caption: Label = hud["charge_"+id]
 		if id=="probe":
 			caption.text="%ds" % ceili((1-session.probe_charge)*9) if session.probe_charge<1 else ("FREE · %d" % int(session.probe_charge) if session.has("reservoir") else "FREE")
@@ -531,7 +546,7 @@ func update_hud() -> void:
 			var price: float=session.effective_tool_cost(id,inspect_cell) if selected_tool==id and inspect_cell>=0 else session.tool_cost(id)
 			caption.text=str(int(price)) if is_equal_approx(price,roundf(price)) else "%.1f" % price
 		if running:
-			caption.text="%ds" % ceili(session.overdrive_seconds)
+			caption.text="%ds" % ceili(session.drift.stasis if id=="stasis" else session.overdrive_seconds)
 		var tool_glyph := btool.get_child(0) as Glyph
 		tool_glyph.color=Palette.GOLD if running else Palette.MINT
 		tool_glyph.armed=selected_tool==id or running
@@ -573,7 +588,7 @@ func show_tree() -> void:
 	upgrade_tree.activate.connect(purchase_upgrade)
 	p.add_child(upgrade_tree)
 	label_at(p,"Discoveries",Rect2(38,29,540,49),32,Palette.WHITE,true)
-	label_at(p,"%d / 50" % session.upgrades.size(),Rect2(984,36,120,32),17,Palette.MUTED)
+	label_at(p,"%d / %d" % [session.upgrades.size(),Content.UPGRADES.size()],Rect2(984,36,120,32),17,Palette.MUTED)
 	icon(p,"prism",Rect2(1106,40,24,24),Palette.GOLD,19)
 	label_at(p,format_number(session.credits),Rect2(1135,36,93,32),18,Palette.WHITE)
 	icon(p,"core",Rect2(1227,40,24,24),Palette.MUTED,19)
@@ -645,6 +660,8 @@ func on_cell(i: int, right: bool, keyboard_reveal: bool = false) -> void:
 	after_action()
 
 func on_hover(i: int) -> void:
+	if modal_kind=="":
+		session.set_focus(i)
 	# Clue/flag/plate counts are drawn in the terminal's footer, away from the
 	# puzzle. A popup must never cover the neighbouring cells being inspected.
 	board_view.tooltip_text = ""
@@ -658,7 +675,7 @@ func select_tool(id: String) -> void:
 		return
 	if id == "probe" and not session.has("focus"):
 		session.use_tool("probe")
-	elif id == "overdrive":
+	elif id in ["overdrive","stasis"]:
 		session.use_tool(id)
 	elif id == "probe":
 		selected_tool = "" if selected_tool == id else id
@@ -704,6 +721,12 @@ func consume_events() -> void:
 	session.events.clear()
 	for event in events:
 		match event.type:
+			"drift":
+				for cell in event.cells:
+					board_view.changed_clues[cell]=1.2
+			"convergence":
+				effects.ring(board_view.position+board_view.size/2,Palette.MINT)
+				audio.play("tool",0.8)
 			"reveal":
 				board_view.animate_cells(event.cells,event.source)
 				var visible: Array=event.cells.filter(func(cell): return board_view.visible_cell(cell))
@@ -898,7 +921,7 @@ func back_modal() -> void:
 	close_modal()
 	while not history.is_empty():
 		var previous: String=history.pop_back()
-		var action: Callable={"pause":show_pause,"settings":show_settings,"guide":show_guide,"records":show_records,"credits":show_credits,"licenses":show_licenses,"complete":show_completion,"failed":show_failure,"tree":show_tree,"legend":show_legend}.get(previous,Callable())
+		var action: Callable={"pause":show_pause,"settings":show_settings,"guide":show_guide,"records":show_records,"credits":show_credits,"licenses":show_licenses,"complete":show_completion,"failed":show_failure,"tree":show_tree,"legend":show_legend,"drift_legend":show_drift_legend}.get(previous,Callable())
 		if action.is_valid():
 			action.call()
 			modal_history.assign(history)
@@ -996,7 +1019,7 @@ func show_guide(page: int = 0) -> void:
 	p.add_child(preview)
 	var heading: String = ["Read the neighbours.","Give your hands more reach.","Clear a field. Make a discovery."][page]
 	var text_value: String = [
-		"1 means one charge in the eight touching tiles.\n\nRight-click to flag. Match a clue's flags, then click the clue to open its neighbours.\n\nUncertain? Pulse opens safe ground.",
+		"1 means one charge in the eight touching tiles.\n\nRight-click to flag. Chord relay unlocks after field 1: match a clue's flags, then click it to dig its neighbours.\n\nUncertain? Pulse opens safe ground.",
 		"Grow opens the upgrade tree. Connect a node to reach its branches.\n\nSelect a tool, then aim at the field. Hover its button for the cost and effect.\n\nManual work and crystals recharge energy.",
 		"Every cleared field banks its cargo and awards cores. Spend them in Grow.\n\nA strike costs half your cargo and all energy. Two hull hits lose the attempt.\n\nRetry with your banked light and equipment intact. Pulse and beams are always safe."
 	][page]
@@ -1042,7 +1065,10 @@ func show_legend() -> void:
 		label_at(card,entry.title,Rect2(104,12,240,28),19,Palette.WHITE,true)
 		paragraph(card,entry.text,Rect2(104,45,240,59),17,Palette.MUTED)
 	button(p,"Back to field",Rect2(576,p.size.y-56,192,40),close_modal,true)
-	label_at(p,"L  ·  Field symbols",Rect2(32,p.size.y-53,320,32),14,Palette.MUTED)
+	if session.drift.enabled:
+		button(p,"Moving mines →",Rect2(32,p.size.y-56,208,40),show_drift_legend)
+	else:
+		label_at(p,"L  ·  Field symbols",Rect2(32,p.size.y-53,320,32),14,Palette.MUTED)
 
 func show_region(number: int) -> void:
 	var data: Dictionary = Content.REGIONS[number]
@@ -1276,6 +1302,7 @@ func _input(event: InputEvent) -> void:
 				n = mini(b.cells.size()-1,n+b.width)
 			board_view.keyboard_cell = n
 		board_view.ensure_cell_visible(board_view.keyboard_cell)
+		session.set_focus(board_view.keyboard_cell)
 		get_viewport().gui_release_focus()
 	elif event.keycode in [KEY_SPACE,KEY_ENTER] and board_view.keyboard_cell >= 0:
 		on_cell(board_view.keyboard_cell,false,true)
@@ -1286,12 +1313,12 @@ func _input(event: InputEvent) -> void:
 			on_cell(board_view.keyboard_cell,true)
 		else:
 			toggle_flag_mode()
-	elif event.keycode in [KEY_2,KEY_3,KEY_4]:
-		select_tool({KEY_2:"cross",KEY_3:"line",KEY_4:"nova"}[event.keycode])
+	elif event.keycode in [KEY_2,KEY_3,KEY_4,KEY_6,KEY_7]:
+		select_tool({KEY_2:"cross",KEY_3:"line",KEY_4:"nova",KEY_6:"anchor",KEY_7:"stasis"}[event.keycode])
 	elif event.keycode == KEY_5 and session.has("overdrive"):
 		session.use_tool("overdrive")
 		after_action()
-	if event.keycode in [KEY_LEFT,KEY_RIGHT,KEY_UP,KEY_DOWN,KEY_SPACE,KEY_ENTER,KEY_F,KEY_1,KEY_2,KEY_3,KEY_4,KEY_5]:
+	if event.keycode in [KEY_LEFT,KEY_RIGHT,KEY_UP,KEY_DOWN,KEY_SPACE,KEY_ENTER,KEY_F,KEY_1,KEY_2,KEY_3,KEY_4,KEY_5,KEY_6,KEY_7]:
 		get_viewport().set_input_as_handled()
 
 func _notification(what: int) -> void:
@@ -1408,3 +1435,24 @@ func smoke_click(p: Vector2) -> void:
 func refresh_layer_ui() -> void:
 	if screen == "play" and modal_kind == "":
 		start_play()
+
+
+func show_drift_legend() -> void:
+	var p := dialog("Moving ground",Vector2(800,452),"drift_legend")
+	var entries := [
+		["ballast","Pointer shelter","The mint frame holds mines AND clues still. A short grace follows your pointer."],
+		["mooring","Fixed ground","Flags and worked tiles cannot move. Anchor marks pin a patch permanently."],
+		["tracer","Safe wake","With Wake tracer, the diamond marks a vacated tile. It stays safe to dig."],
+		["stasis","Drift clock","Untouched mines step sideways each wave. Changed clues flash; this clock warns you."]
+	]
+	for i in range(entries.size()):
+		var card := panel(p,Rect2(32+i%2*376,100+i/2*140,360,124),Palette.PANEL_LIGHT)
+		var sample := DriftSample.new()
+		sample.kind=entries[i][0]
+		sample.position=Vector2(4,24)
+		sample.size=Vector2(80,80)
+		card.add_child(sample)
+		label_at(card,entries[i][1],Rect2(92,12,254,28),19,Palette.WHITE,true)
+		paragraph(card,entries[i][2],Rect2(92,44,254,76),16,Palette.MUTED)
+	button(p,"Field symbols",Rect2(32,392,192,40),show_legend)
+	button(p,"Back to field",Rect2(576,392,192,40),func(): modal_history.clear(); close_modal(),true)
