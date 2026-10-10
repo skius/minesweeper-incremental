@@ -1,53 +1,91 @@
-# Revision 1.3.0 verification
+# Revision 1.4.0 verification
 
-This supersedes [1.2.1](QA-1.2.1.md). This revision removes repeated strata between rewards, makes failed attempts lose unbanked cargo, and pins tree selection on click. All launches use the supplied Godot 4.7.2 Compatibility renderer. Test saves/logs are isolated; native windows run muted on a separate Windows desktop. No third-party or generative assets were used.
+Supersedes [1.3.0](QA-1.3.md). Supplied Godot 4.7.2, Compatibility renderer.
+Native launches were muted on an isolated Windows desktop; all test saves/logs
+are under `test_runs/`. No player save was used.
 
-## Rules, economy and saves
+## Rules and persistence
 
-87,897 checks pass in `test.log`. This includes the independent reviewer’s 252 strike/escrow/retry/migration checks, malformed-save backup recovery, deterministic truthful boards, first-clear choices, tool combinations and all 50 real-rule upgrade previews. A lower count than 1.2.1 reflects the removed repeated-strata test iterations, not skipped failure checks.
+`test.log`: **90,113** core, persistence, preview and layout checks pass.
+`drift.log`: **16,928** independent adversarial drift checks pass. The reviewer
+wrote the dedicated runner; the primary agent integrated and ran its final form.
 
-Two unprotected strikes fail an attempt. The first removes half current cargo (rounded up), drains energy and clears the chain; the second discards remaining cargo. Shield absorbs the first strike; it still lowers the rating and loses Bounty’s perfect-clear core. One mistaken chord costs at most one strike. Every mutation/automation path stops after failure, even when a nested Seismic action uncovered the last safe tile first. Failure wins over completion and no payout occurs. Buying from cargo is impossible.
+Coverage includes exact clue arithmetic/mine counts, orthogonal swaps, unchanged
+pockets/flags/worked ground, pointer shelter plus halo across repeated waves at
+edges/corners, all recent focus grace zones, correct input ordering, no movement
+inside action transactions or while inactive/failed/finished/frozen, no reward
+for empty waves, and atomic safe wake reservation before reward callbacks.
 
-Retries preserve banked credits/cores/upgrades, reset temporary state, and use an attempt-indexed deterministic seed. New-schema saves require damage/failure/attempt fields and reject impossible unopened failures. Old v1/v2 saves retain exact board state and banked resources, without retroactive hull damage. Old active board earnings are not credited twice; old completed intermediate strata become a finished site without replaying flag salvage. Migration is idempotent after saving. The validated backup remains available.
+All fourteen Drift upgrades have direct effect checks and truthful before/after
+previews; the new basic chord upgrade is tested locked and unlocked. Old save
+migration preserves chording where previously available and keeps the current
+board static. Schema 4 requires and validates every drift field, bounds/arrays,
+trace safety, clocks, focus and grace. Uninterrupted versus save/reload tick
+sequences choose identical future swaps. Prior strike/escrow/backup regressions
+still pass. Clicking one incorrect chord still costs at most one hull hit.
 
-The campaign has 96 boards, one per site. Each pays 1/2/3 base cores by region pair plus applicable relay, trial and Bounty bonuses. First-clear earnings still fund Lens plus one 100-light starter even after a surviving hit. Survey volley replaces obsolete Autodescent with three extra safe openings.
+## Campaign and challenge
 
-| Campaign policy | Decision interval | Minutes | Inputs | Maximum purchase gap |
+| Policy | Decision interval | Minutes | Inputs | Largest purchase gap |
 |---|---:|---:|---:|---:|
-| Fast |1second|35.8|1,590|1.8minutes|
-| Fleet-first |1second|36.9|1,643|1.8minutes|
-| Deliberate |3seconds|71.2|1,185|4.2minutes|
+| Fast | 1 second | 37.1 | 1,651 | 1.7 minutes |
+| Fleet-first | 1 second | 37.7 | 1,675 | 1.8 minutes |
+| Deliberate | 3 seconds | 72.9 | 1,215 | 4.1 minutes |
 
-All policies finish with 50 upgrades and zero solver/tool strikes. Final Legacy purchase arrives at site 92. These are models (`balance_v2.json`), not independent human times or optimal speedruns. The former three-hour fast-player target is no longer met; removing the reported repeated work takes priority over duration padding. New meaningful content would be needed to restore that duration.
+Every policy acquires all 65 upgrades and completes 96 fields without a strike.
+Final Legacy purchase occurs at field 92. `balance_v2.json` records each purchase.
+These are simulations; the original three-hour target remains unmet.
 
-All 12 optional trials pass. On identical plated site 49, early/middle/full equipment takes 284/11/7 seconds and 86/10/6 inputs, with zero strikes (`power_curve.json`).
+Identical initial field 49: early/mid/full equipment takes 106/11/8 seconds and
+105/10/6 inputs, all strike-free (`power_curve.json`). Drift uses the actual
+rules, so later wave histories can differ between equipment profiles. All twelve
+optional trials remain static and pass their equipment restrictions.
 
-## Anti-spam comparison
+Ninety matched strategy cases pass (`strategy_balance.json`). Clue play completes
+18/18, zero failures, 302.5 total seconds, 60,879 banked light. Plain row/random
+spam at 10Hz completes 3/18 each (tutorial only), with 1,663/1,459 failed attempts
+and 372/388 banked light. Tool-using row/random policies complete 9/18 and 11/18;
+late equipment retains its intended ability to overpower earlier work.
 
-`strategy_balance.gd` runs 90 cases: 18 matched fixtures across fields 1, 6, 21, 48, 73, 96 and three attempt seeds, with natural equipment from the current full campaign. The visible-clue policy acts once per second. Blind row/random policies click ten times per second, with additional versions using the same footprint-scored safe tools, Pulse and passive fleet. No mode reads hidden mines. Failed attempts retry immediately, with no time penalty beyond one input. Each blind case gets at least 120 seconds or three times the solver duration.
+## Native play, UI and screenshots
 
-| Policy | Completed fixtures | Failed attempts | Total simulated seconds | Banked light |
-|---|---:|---:|---:|---:|
-| Clue policy |18/18|0|298.3|61,076|
-| Row spam |3/18|1,667|1,814.9|372|
-| Random spam |3/18|1,470|1,820.0|388|
-| Row + toolkit |9/18|1,006|1,111.7|46,826|
-| Random + toolkit |10/18|709|1,021.1|49,336|
+**769** native input/state checks and **59** viewport captures pass (`shots.log`).
+Tests include all prior menus/settings/disclosure, tree pinned-selection purchase,
+field zoom/pan/keyboard targets, hull/retry, small/wide windows and save failures.
+New native checks cover timed movement, stable sheltered clues, modal clock pause,
+Anchor/Stasis shortcuts, energy spending, keyboard shelter movement, anchor and
+Stasis persistence, full 65-node layout and 65 distinct rendered icon signatures.
+Twelve contact sheets show all actual upgrade demonstrations before and after.
 
-Pure spam only completes the tiny tutorial fixtures, sometimes faster by luck. Tool-using policies can complete fully equipped late fields quickly, which is the intended automation payoff. This is evidence against blind clicking as an efficient campaign strategy, not proof that guessing can never win on one small board. Regression thresholds now fail when blind clicking becomes competitive in completion count or banked light per second. Results: `strategy.log` and `strategy_balance.json`.
+Inspected `v6_01_drift_shelter`, `v6_02_drift_legend`, `v6_03_stasis_and_anchor`,
+`v6_04_drift_tree`, icon families and new upgrade previews. Adjusted compressed
+branch forks until all node hit areas were disjoint even at minimum zoom. The
+legend mirrors actual tile marks. Manual play revealed safe-wake/plate overlap;
+wake diamonds moved to the top-right corner, leaving the central plate stack and
+top-left anchor mark clear. Native screenshots and the resumed play capture were
+inspected after that change. Latest 180-frame RTX 4090 sample: 6.901ms median,
+8.026ms p95, 1,030 draw calls; not a minimum-hardware claim.
 
-## Native input, visuals and play
-
-532 native checks pass over 53 Godot viewport captures (`shots.log`). Tests cover persistent clicked selection while hovering another node and purchasing, keyboard selection, hull damage/failure/retry, immediate single-board rewards, disclosure, settings, modal isolation, field controls, zoom/pan, aimed costs, small/wide windows, save errors and all upgrade previews.
-
-Inspected captures include `v5_41_tree_pinned`, `v5_42_single_field_clear`, `v5_43_hull_damaged`, `v5_44_retry`, early/full legends and the late trial. Selection has a fixed mint frame and corner tabs; hover uses a thin neutral edge. Hull, cargo and projected cores have distinct spacing in the field status strip; idle drone positions moved to the opposite end. The existing centre axes and equipment gaps remain. Legend entries match hull/cargo behavior and only mention Shield when installed. Final late-game sample: 6.95 ms median/7.32 ms p95, 872 draw calls on RTX 4090; not a minimum-hardware claim.
-
-Agent-directed native play used visible clues, flags/chords, Pulse and aimed Crossbeam. It cleared field 1, bought Lens/Crossbeam, exercised first-hit damage and second-hit failure on field 2, retried the fresh layout and cleared it without a strike. Banked resources/upgrades survived. The first launcher reached its 900-second timeout during an interrupted user turn; the saved field was then reloaded, advanced to field 3, opened and quit mid-board. `manual_v5_resume.log` exits successfully. This is an agent play session plus scripted checks, not an independent human playtest.
+Agent-directed native play used a controlled field-41 starting equipment fixture
+and only the public clues/marks thereafter. It opened safely, paid for a 5×5
+anchor, used Crossbeam, deduced and flagged two mines, then chorded a satisfied
+number. It excavated a visible safe wake after 22 movement waves, with no strike.
+Quit/relaunch restored the exact field, wave 22 and 25 pinned cells. Logs:
+`manual_v6.log` (11 commands), `manual_v6_resume.log` (3); the initial history is
+preserved as `manual_v6_history.json`. This is agent-directed feature play plus
+scripted tests, not an independent human playtest or a completed human campaign.
 
 ## Release
 
-Source build: `b50db5a`. Windows and Compatibility Web exports succeeded. The actual exported Windows executable passes its expanded smoke (`release_v5.log`, `editor=false`): real tree selection and purchase after hovering another node, hull failure, failed-state save/reload, and immediate native retry retaining equipment. Its retry viewport was inspected.
+Final game source `c647f0f` (feature milestone `78d8c0a`). Windows and Compatibility
+Web exports succeed. The actual Windows executable passes `release_v6.log` with
+`editor=false`, exercising rendering, clicked tree purchase after hovering another
+node, failed-attempt persistence/retry, protected drifting ground, native Anchor
+and Stasis buttons, and schema-4 saves. Its `release-drift.png` viewport was inspected.
 
-`builds/Afterlight-1.3.0-Windows.zip` contains exactly Afterlight.exe, Afterlight.pck and README.txt. Each entry matches the tested export by SHA-256; README also matches its source. Size: 39,582,990 bytes. Archive SHA-256: `ab89a2a8beb463ef8ee5b7e4f0e30b7e36689928cc1748a88043f4190809037e`. Evidence: `test_runs/package_v5.json`.
-
-Browser runtime/persistence and lower-end hardware remain unverified. Art/audio remain procedural; no store integration was added.
+`builds/Afterlight-1.4.0-Windows.zip`: 39,604,673 bytes, exactly `Afterlight.exe`,
+`Afterlight.pck`, `README.txt`. All entry hashes match the tested export; README
+matches source. SHA-256:
+`eb0cacbca68c9d88dc4e58e57563dca792fe19aefae9aa1a9eb7f04f7e1d9544`.
+Evidence: `package_v6.json`. Browser runtime/persistence, lower-end performance
+and independent human enjoyment remain unverified. All assets remain procedural.
