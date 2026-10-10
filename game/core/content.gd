@@ -1,7 +1,7 @@
 class_name Content
 extends RefCounted
 
-const VERSION = "1.2.1"
+const VERSION = "1.3.0"
 const REGION_LENGTH = 16
 const CAMPAIGN_LENGTH = 96
 # Width, height, density, plating, terrain. Each optional pair offers a compact
@@ -26,7 +26,7 @@ const REGIONS = [
 # Each purchase changes a rule, ability, information source or automation behaviour.
 const UPGRADES = [
 	{"id":"lens","name":"Survey lens","group":-1,"cost":24,"cores":0,"rank":0,"pre":"","icon":"lens","desc":"A survey lens lights up the eight neighbours of any clue.","branch":-1,"depth":0,"side":0},
-	{"id":"salvage","name":"Charge reclamation","group":2,"cost":100,"cores":1,"rank":1,"pre":"lens","icon":"flag","desc":"Correct flags pay 8 light when each stratum clears.","branch":5,"depth":1,"side":-1},
+	{"id":"salvage","name":"Charge reclamation","group":2,"cost":100,"cores":1,"rank":1,"pre":"lens","icon":"flag","desc":"Correct flags add 8 light each to your clear reward.","branch":5,"depth":1,"side":-1},
 	{"id":"probe2","name":"Twin pulse","group":0,"cost":140,"cores":1,"rank":1,"pre":"lens","icon":"pulse","desc":"Your free probe opens two safe tiles instead of one.","branch":0,"depth":1,"side":-1},
 	{"id":"drone","name":"Scout drone","group":1,"cost":100,"cores":1,"rank":0,"pre":"lens","icon":"drone","desc":"A companion opens one logically safe tile every 3 seconds. Never guesses.","branch":1,"depth":1,"side":-1},
 	{"id":"chain","name":"Chain reactor","group":2,"cost":350,"cores":2,"rank":2,"pre":"lens","icon":"cross","desc":"Safe manual reveals build a persistent multiplier, up to 3 times light.","branch":3,"depth":1,"side":-1},
@@ -35,7 +35,7 @@ const UPGRADES = [
 	{"id":"flagger","name":"Cartographer","group":1,"cost":450,"cores":2,"rank":5,"pre":"drone","icon":"flag","desc":"Your drone also marks mines proven by adjacent clues.","branch":1,"depth":1,"side":1},
 	{"id":"battery","name":"Seed capacitor","group":2,"cost":420,"cores":2,"rank":6,"pre":"lens","icon":"battery","desc":"Store 18 energy. Every uncovered pocket refills 4 energy.","branch":2,"depth":1,"side":-1},
 	{"id":"drill","name":"Diamond pick","group":2,"cost":220,"cores":1,"rank":6,"pre":"chain","icon":"line","desc":"Manual work breaks three layers of plating in a single hit.","branch":3,"depth":1,"side":1},
-	{"id":"shield","name":"Soft landing","group":2,"cost":600,"cores":2,"rank":9,"pre":"salvage","icon":"shield","desc":"The first mine hit per expedition keeps your chain and energy intact.","branch":5,"depth":1,"side":1},
+	{"id":"shield","name":"Soft landing","group":2,"cost":600,"cores":2,"rank":9,"pre":"salvage","icon":"shield","desc":"Absorb the first strike per field: keep hull, cargo, chain and energy.","branch":5,"depth":1,"side":1},
 	{"id":"prism","name":"Prism echo","group":2,"cost":700,"cores":3,"rank":10,"pre":"lens","icon":"prism","desc":"Pockets open an extra safe tile through any plating. Pulse opens three tiles.","branch":4,"depth":1,"side":-1},
 	{"id":"pair","name":"Wingmate","group":1,"cost":850,"cores":3,"rank":11,"pre":"drone","icon":"drone","desc":"A second drone joins. Both act each cycle, with independent deductions.","branch":1,"depth":2,"side":-1},
 	{"id":"reservoir","name":"Pulse reservoir","group":0,"cost":650,"cores":2,"rank":12,"pre":"focus","icon":"battery","desc":"Store two free pulses. Save one for the next uncertain corner.","branch":0,"depth":2,"side":-1},
@@ -63,18 +63,18 @@ const UPGRADES = [
 	{"id":"seismic","name":"Seismic rhythm","group":2,"cost":4500,"cores":4,"rank":46,"pre":"fracture","icon":"nova","desc":"Every sixth manual excavation sends a safe crossbeam through that tile.","branch":3,"depth":3,"side":-1},
 	{"id":"oracle","name":"Oracle beacon","group":1,"cost":4400,"cores":5,"rank":47,"pre":"logic","icon":"lens","desc":"When logic stalls, the fleet spends 3 energy to probe safe ground.","branch":1,"depth":4,"side":1},
 	{"id":"magnet","name":"Pocket gravity","group":2,"cost":8800,"cores":4,"rank":83,"pre":"bounty","icon":"prism","desc":"Each pocket pulls open two more safe tiles nearby.","branch":5,"depth":3,"side":1},
-	{"id":"launchpad","name":"Launch rail","group":2,"cost":4300,"cores":4,"rank":51,"pre":"relay","icon":"drone","desc":"The fleet makes the first safe opening on each new stratum.","branch":4,"depth":3,"side":-1},
+	{"id":"launchpad","name":"Launch rail","group":2,"cost":4300,"cores":4,"rank":51,"pre":"relay","icon":"drone","desc":"The fleet makes the first safe opening on each new field.","branch":4,"depth":3,"side":-1},
 	{"id":"supercap","name":"Storm capacitor","group":2,"cost":5700,"cores":4,"rank":57,"pre":"capacitor","icon":"battery","desc":"Store 40 energy: enough to combine Nova and Horizon.","branch":2,"depth":3,"side":-1},
 	{"id":"conductor","name":"Clue conductor","group":2,"cost":8400,"cores":4,"rank":81,"pre":"chord","icon":"prism","desc":"Click a clue to open neighbours proved safe, even without placing flags.","branch":3,"depth":3,"side":1},
 	{"id":"resonance","name":"Resonance","group":2,"cost":6200,"cores":5,"rank":61,"pre":"supercap","icon":"pulse","desc":"Every tool reveal earns energy back. Smart sweeps skip already open ground.","branch":2,"depth":3,"side":1},
 	{"id":"crucible","name":"Shard furnace","group":2,"cost":6000,"cores":4,"rank":70,"pre":"echochamber","icon":"battery","desc":"Every shattered plate, including drone work, fuels your tools.","branch":5,"depth":4,"side":-1},
 	{"id":"swarm","name":"Daybreak swarm","group":1,"cost":7000,"cores":6,"rank":65,"pre":"fleet","icon":"fleet","desc":"Eight drones. Each cycle paints a sweeping ribbon across the field.","branch":1,"depth":5,"side":-1},
-	{"id":"autodescent","name":"Autonomous descent","group":2,"cost":7500,"cores":5,"rank":71,"pre":"launchpad","icon":"fleet","desc":"The fleet descends to the next stratum by itself. New sites still await your signal.","branch":4,"depth":3,"side":1},
-	{"id":"aurora","name":"Aurora protocol","group":2,"cost":8400,"cores":6,"rank":73,"pre":"autodescent","icon":"nova","desc":"Clearing each stratum refills all energy. Pockets trigger safe crossbeams.","branch":4,"depth":4,"side":-1},
+	{"id":"autodescent","name":"Survey volley","group":2,"cost":7500,"cores":5,"rank":71,"pre":"launchpad","icon":"fleet","desc":"Every new field opens with three extra safe pulses, beyond Relay network.","branch":4,"depth":3,"side":1},
+	{"id":"aurora","name":"Aurora protocol","group":2,"cost":8400,"cores":6,"rank":73,"pre":"autodescent","icon":"nova","desc":"Pockets trigger safe crossbeams. Clearing a field refills all energy.","branch":4,"depth":4,"side":-1},
 	{"id":"aftershock","name":"Event horizon","group":0,"cost":8500,"cores":6,"rank":76,"pre":"nova","icon":"nova","desc":"Nova grows to 7 by 7 and cracks every plate inside.","branch":0,"depth":5,"side":1},
 	{"id":"recycler","name":"Closed circuit","group":2,"cost":8000,"cores":5,"rank":78,"pre":"resonance","icon":"battery","desc":"Beams refund energy for open tiles in their footprint. Precision becomes optional.","branch":2,"depth":4,"side":-1},
 	{"id":"overdrive","name":"Solar overdrive","group":1,"cost":10000,"cores":6,"rank":80,"pre":"swarm","icon":"nova","desc":"12 seconds of 10× fleet speed. Costs 12 energy; stores 24 energy.","branch":1,"depth":5,"side":1},
-	{"id":"legacy","name":"Unbroken current","group":2,"cost":11000,"cores":6,"rank":91,"pre":"aurora","icon":"nova","desc":"Your chain carries between strata and sites. All excavation breaks six plate layers.","branch":4,"depth":4,"side":1}
+	{"id":"legacy","name":"Unbroken current","group":2,"cost":11000,"cores":6,"rank":91,"pre":"aurora","icon":"nova","desc":"Your chain carries between fields. All excavation breaks six plate layers.","branch":4,"depth":4,"side":1}
 ]
 
 const TRANSMISSIONS = [
@@ -140,7 +140,11 @@ static func title_for(index: int) -> String:
 const BRANCH_NAMES = ["BEAMS", "FLEET", "ENERGY", "CRAFT", "DISCOVERY", "ALCHEMY"]
 const BRANCH_COLORS = ["7bdde8","efbf77","e9dd97","ed9b87","b6a4e5","8bd6a6"]
 
-static func strata_for(index: int, trial: int = -1) -> int:
+static func strata_for(_index: int, _trial: int = -1) -> int:
+	return 1
+
+# Only the save migrator uses the historical multi-stratum schedule.
+static func legacy_strata_for(index: int, trial: int = -1) -> int:
 	if trial >= 0 or index < 4:
 		return 1
 	return [2,3,5,7,9,12][region_for(index)] + (1 if index % REGION_LENGTH >= 12 else 0)

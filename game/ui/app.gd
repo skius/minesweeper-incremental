@@ -329,7 +329,7 @@ func start_play() -> void:
 	build_tools()
 	layout_ui()
 	update_hud()
-	if session.finished:
+	if session.finished or session.failed:
 		finish_delay = 0.5
 
 func disclosure_stage() -> int:
@@ -376,9 +376,15 @@ func build_field() -> void:
 			hud[kind]=symbol_button(board_view,kind,Rect2(0,14,36,32),func():
 				board_view.set_zoom(1 if kind=="zoom_fit" else board_view.zoom+(-0.25 if kind=="zoom_out" else 0.25))
 			,["Zoom out","Show whole field","Zoom in · scroll to zoom\nMiddle-drag or click the overview to pan"][j])
+	var status := FieldStatus.new()
+	status.session=session
+	status.position=Vector2(24,64)
+	status.size=Vector2(298,32)
+	board_view.add_child(status)
+	hud.field_status=status
 	if session.has("chain"):
-		icon(board_view,"upgrade:chain",Rect2(272,64,32,32),Palette.GOLD,23)
-		hud.chain=label_at(board_view,"",Rect2(312,64,80,32),18,Palette.GOLD,true)
+		icon(board_view,"upgrade:chain",Rect2(340,64,32,32),Palette.GOLD,23)
+		hud.chain=label_at(board_view,"",Rect2(380,64,64,32),18,Palette.GOLD,true)
 	if session.drone_count()>0:
 		hud.fleet_symbol=icon(board_view,"drone",Rect2(0,64,32,32),Palette.MINT,26)
 		hud.fleet_title=label_at(board_view,str(session.drone_count()),Rect2(0,64,28,32),18,Palette.MINT,true)
@@ -407,7 +413,7 @@ func build_tools() -> void:
 	for id in ["cross","line","nova","overdrive"]:
 		if session.tool_available(id):
 			ids.append(id)
-	var completed := session.layer_ready or session.finished
+	var completed := session.failed or session.finished
 	var has_energy := not completed and (session.tool_available("cross") or session.tool_available("overdrive") or (session.has("oracle") and session.drone_count()>0))
 	var row_width := ids.size()*80.0+(ids.size()-1)*8.0
 	var dock_width := 280.0 if completed else maxf(176,row_width+24)
@@ -425,7 +431,7 @@ func build_tools() -> void:
 		dock.add_child(meter)
 		hud.energy=meter
 	if completed:
-		hud.descend=button(dock,"Descend ↓" if session.layer_ready else "Site restored →",Rect2(12,12,256,80),descend_or_complete,true)
+		hud.descend=button(dock,"Retry field →" if session.failed else "Site restored →",Rect2(12,12,256,80),descend_or_complete,true)
 		return
 	for j in range(ids.size()):
 		var id: String=ids[j]
@@ -469,7 +475,9 @@ func tool_help(id: String) -> String:
 	return "%s · %s\n%d energy" % [name_value,shape,session.tool_cost(id)]
 
 func descend_or_complete() -> void:
-	if session.finished:
+	if session.failed:
+		show_failure()
+	elif session.finished:
 		show_completion()
 	elif session.advance_layer():
 		consume_events()
@@ -479,7 +487,10 @@ func descend_or_complete() -> void:
 func update_hud() -> void:
 	if screen != "play" or session == null or hud.is_empty():
 		return
+	if hud.has("field_status"):
+		hud.field_status.queue_redraw()
 	if hud.has("light"):
+		hud.light.tooltip_text="Banked light · safe to spend on upgrades"
 		hud.light.text = format_number(session.credits)
 	if hud.has("cores"):
 		hud.cores.text = str(session.cores)
@@ -505,14 +516,14 @@ func update_hud() -> void:
 		hud.chain.text = "×%d" % session.multiplier()
 		hud.chain.tooltip_text = "Manual chain: %d. No timer." % session.chain
 	var inspect_cell: int=board_view.keyboard_cell if board_view.keyboard_cell>=0 else board_view.hover
-	hud.cue.visible = not session.finished and not session.layer_ready and inspect_cell<0 and session.index==0 and session.manual_actions<4
+	hud.cue.visible = not session.failed and not session.finished and not session.layer_ready and inspect_cell<0 and session.index==0 and session.manual_actions<4
 	hud.cue.mode = "aim" if selected_tool!="" else ("flag" if b.generated or settings.flag_mode else "reveal")
 	hud.cue.keyboard = board_view.keyboard_cell>=0
 	hud.cue.tooltip_text = "Aim · Esc cancels" if selected_tool!="" else ("Flag · right mouse / F" if b.generated else "Reveal · left mouse / Enter")
 	for id in tool_buttons:
 		var btool: Button = tool_buttons[id]
 		var running: bool=id=="overdrive" and session.overdrive_seconds>0
-		btool.disabled = running or (session.probe_charge<1 if id=="probe" else session.energy<session.minimum_tool_cost(id)) or session.finished or session.layer_ready
+		btool.disabled = running or (session.probe_charge<1 if id=="probe" else session.energy<session.minimum_tool_cost(id)) or session.failed or session.finished or session.layer_ready
 		var caption: Label = hud["charge_"+id]
 		if id=="probe":
 			caption.text="%ds" % ceili((1-session.probe_charge)*9) if session.probe_charge<1 else ("FREE · %d" % int(session.probe_charge) if session.has("reservoir") else "FREE")
@@ -542,7 +553,7 @@ func update_hud() -> void:
 				ready += 1
 		hud.grow.add_theme_stylebox_override("normal",Palette.surface(Palette.PANEL_LIGHT.lightened(0.07) if ready else Palette.PANEL))
 	board_view.active_tool = selected_tool
-	board_view.blocked = modal_kind != "" or session.finished or session.layer_ready
+	board_view.blocked = modal_kind != "" or session.failed or session.finished or session.layer_ready
 
 func show_tree() -> void:
 	if session == null or disclosure_stage() < 2:
@@ -621,7 +632,7 @@ func update_shop() -> void:
 	pass
 
 func on_cell(i: int, right: bool, keyboard_reveal: bool = false) -> void:
-	if modal_kind != "" or session.finished:
+	if modal_kind != "" or session.failed or session.finished:
 		return
 	get_viewport().gui_release_focus()
 	if right or (settings.flag_mode and session.board.generated and selected_tool == "" and not keyboard_reveal):
@@ -699,8 +710,8 @@ func consume_events() -> void:
 				if event.amount > 0 and not visible.is_empty():
 					var p := board_view.position+board_view.cell_position(visible[0])
 					var reward_at := Vector2(hud.currency.global_position.x+hud.currency.size.x+48,67) if hud.has("currency") else board_view.global_position+Vector2(220,board_view.size.y-32)
-					effects.popup(reward_at,"+%d" % event.amount,Palette.MINT)
-					effects.burst(p,Palette.MINT,mini(event.cells.size()*2+3,18),hud.light.global_position+Vector2(-24,19) if hud.has("light") else Vector2(-1,-1))
+					effects.popup(reward_at,"+%d cargo" % event.amount,Palette.MINT)
+					effects.burst(p,Palette.MINT,mini(event.cells.size()*2+3,18),hud.field_status.global_position+Vector2(111,16))
 					audio.play("reveal",pow(2,float(mini(event.chain,16)%5)/12))
 			"excavate":
 				var p := board_view.position+board_view.cell_position(event.cell)
@@ -723,7 +734,12 @@ func consume_events() -> void:
 				effects.burst(p,Palette.CORAL,18)
 				effects.ring(p,Palette.CORAL)
 				audio.play("strike")
-				toast("Shield caught it." if event.protected else "A strike. Keep your light, keep going.")
+				toast("Shield absorbed the strike." if event.protected else "Hull damaged · %d cargo lost · energy drained" % event.lost,4)
+			"failed":
+				selected_tool=""
+				finish_delay=0.7
+				save_game()
+				call_deferred("refresh_layer_ui")
 			"flag":
 				audio.play("flag",1.1 if event.auto else 1.0)
 				board_view.animations[event.cell] = 0
@@ -773,8 +789,11 @@ func _process(delta: float) -> void:
 			save_game()
 		if finish_delay >= 0:
 			finish_delay -= delta
-			if finish_delay < 0 and session.finished:
-				show_completion()
+			if finish_delay < 0:
+				if session.failed:
+					show_failure()
+				elif session.finished:
+					show_completion()
 	hud_clock += delta
 	if hud_clock > 0.2:
 		hud_clock = 0
@@ -863,7 +882,7 @@ func close_modal() -> void:
 		modal_return_focus.grab_focus()
 	modal_return_focus=null
 	if board_view:
-		board_view.blocked = session.finished or session.layer_ready
+		board_view.blocked = session.failed or session.finished or session.layer_ready
 
 func set_background_focus(enabled: bool) -> void:
 	for control in ui.find_children("*","Control",true,false):
@@ -879,7 +898,7 @@ func back_modal() -> void:
 	close_modal()
 	while not history.is_empty():
 		var previous: String=history.pop_back()
-		var action: Callable={"pause":show_pause,"settings":show_settings,"guide":show_guide,"records":show_records,"credits":show_credits,"licenses":show_licenses,"complete":show_completion,"tree":show_tree,"legend":show_legend}.get(previous,Callable())
+		var action: Callable={"pause":show_pause,"settings":show_settings,"guide":show_guide,"records":show_records,"credits":show_credits,"licenses":show_licenses,"complete":show_completion,"failed":show_failure,"tree":show_tree,"legend":show_legend}.get(previous,Callable())
 		if action.is_valid():
 			action.call()
 			modal_history.assign(history)
@@ -968,18 +987,18 @@ func apply_settings() -> void:
 func show_guide(page: int = 0) -> void:
 	var p := dialog("Field guide",Vector2(820,641),"guide")
 	for i in range(3):
-		button(p,["Clues","Equipment","Depth"][i],Rect2(38+i*252,109,240,41),func(): show_guide(i),i==page)
+		button(p,["Clues","Equipment","Fieldwork"][i],Rect2(38+i*252,109,240,41),func(): show_guide(i),i==page)
 	var preview := DiscoveryPreview.new()
 	preview.position = Vector2(61,225)
 	preview.size = Vector2(300,200)
 	preview.item = Content.upgrade(["lens","cross","drill"][page])
 	preview.motion = settings.motion
 	p.add_child(preview)
-	var heading: String = ["Read the neighbours.","Give your hands more reach.","Go deeper. Bring better tools."][page]
+	var heading: String = ["Read the neighbours.","Give your hands more reach.","Clear a field. Make a discovery."][page]
 	var text_value: String = [
 		"1 means one charge in the eight touching tiles.\n\nRight-click to flag. Match a clue's flags, then click the clue to open its neighbours.\n\nUncertain? Pulse opens safe ground.",
 		"Grow opens the upgrade tree. Connect a node to reach its branches.\n\nSelect a tool, then aim at the field. Hover its button for the cost and effect.\n\nManual work and crystals recharge energy.",
-		"Stripes are buried plates. Read the clues, then break through.\n\nClear a stratum to descend. Equipment stays with you.\n\nDrones solve clues. Drills and beams let them tackle bigger excavations."
+		"Every cleared field banks its cargo and awards cores. Spend them in Grow.\n\nA strike costs half your cargo and all energy. Two hull hits lose the attempt.\n\nRetry with your banked light and equipment intact. Pulse and beams are always safe."
 	][page]
 	paragraph(p,heading,Rect2(378,195,399,65),25,Palette.WHITE)
 	paragraph(p,text_value,Rect2(378,289,392,255),17,Palette.MUTED)
@@ -991,7 +1010,9 @@ func show_legend() -> void:
 	var entries: Array[Dictionary]=[
 		{"id":"clue","title":"Clue","text":"Nearby charges, including diagonal tiles."},
 		{"id":"flag","title":"Flag","text":"Your guess at a charge. Flags can be wrong."},
-		{"id":"counter","title":"Safe ground","text":"Safe tiles opened / total safe tiles."}
+		{"id":"counter","title":"Safe ground","text":"Safe tiles opened / total safe tiles."},
+		{"id":"hull","title":"Hull","text":"Two hits lose the attempt. Shield absorbs one." if session.has("shield") else "Two hits lose the attempt. Retry keeps upgrades."},
+		{"id":"cargo","title":"Field cargo","text":"Bank on clear. A hit loses half; failure loses all."}
 	]
 	if session.board.generated:
 		entries.append({"id":"pulse","title":"Pulse","text":"Opens safe ground. Recharges for free."})
@@ -1030,6 +1051,25 @@ func show_region(number: int) -> void:
 	paragraph(p,data.story,Rect2(38,163,580,92),25,Palette.WHITE)
 	paragraph(p,data.effect,Rect2(38,279,575,66),18)
 	label_at(p,"RESTORED" if session.index > number*16+15 else ("CURRENT REGION" if session.region()==number else "Restore the previous relay to reach this region."),Rect2(38,374,575,39),16,Color(data.color))
+
+func show_failure() -> void:
+	if not session.failed:
+		return
+	var saved := save_game()
+	var p := dialog("Hull breached",Vector2(650,380),"failed")
+	icon(p,"shield",Rect2(38,113,72,72),Palette.CORAL,58)
+	paragraph(p,"Field cargo lost.\nBanked light and upgrades are safe.",Rect2(140,111,465,80),22,Palette.WHITE)
+	label_at(p,"Retry this site on a fresh layout. Pulse opens safe ground.",Rect2(38,216,574,32),16,Palette.MUTED)
+	button(p,"Grow",Rect2(38,276,172,56),show_tree).disabled=ui_stage<2
+	button(p,"Retry field →",Rect2(228,276,384,56),retry_expedition,true)
+	label_at(p,"Saved" if saved else "Save failed · progress is still in memory",Rect2(38,343,574,26),13,Palette.MUTED if saved else Palette.CORAL)
+
+func retry_expedition() -> void:
+	if session.retry_board():
+		session.events.clear()
+		finish_delay=-1
+		save_game()
+		start_play()
 
 func show_completion() -> void:
 	if not session.finished:
@@ -1207,6 +1247,10 @@ func _input(event: InputEvent) -> void:
 	# the field, even when a tool button currently owns keyboard focus.
 	if event.keycode in [KEY_SPACE,KEY_ENTER] and get_viewport().gui_get_focus_owner() is Button:
 		return
+	if session.failed:
+		if event.keycode in [KEY_ENTER,KEY_SPACE]:
+			show_failure()
+		return
 	if session.layer_ready:
 		if event.keycode in [KEY_ENTER,KEY_SPACE]:
 			descend_or_complete()
@@ -1310,11 +1354,38 @@ func release_smoke() -> void:
 	ok = ok and session.has("lens") and save_game()
 	loaded = store.load_session()
 	ok = ok and loaded != null and loaded.has("lens")
+	await smoke_click(upgrade_tree.global_position+upgrade_tree.center_for("cross"))
+	var hover_event := InputEventMouseMotion.new()
+	hover_event.position=upgrade_tree.global_position+upgrade_tree.center_for("drone")
+	get_viewport().push_input(hover_event,true)
+	ok = ok and tree_selected=="cross"
+	await smoke_click(tree_detail.global_position+Vector2(150,555))
+	ok = ok and session.has("cross") and not session.has("drone")
+	next_expedition()
+	await smoke_click(board_view.global_position+board_view.cell_position(24))
+	var saved_bank := session.credits
+	var hazards: Array[int]=[]
+	for i in range(session.board.cells.size()):
+		if session.board.mines[i]:
+			hazards.append(i)
+	for cell in hazards.slice(0,2):
+		await smoke_click(board_view.global_position+board_view.cell_position(cell))
+	ok = ok and session.failed and session.credits==saved_bank and session.board_earned==0 and save_game()
+	loaded=store.load_session()
+	ok = ok and loaded!=null and loaded.failed and loaded.damage==2
+	show_failure()
+	await smoke_capture("release-retry")
+	var retry_buttons := modal.find_children("*","Button",true,false).filter(func(b): return b.text=="Retry field →")
+	if retry_buttons.size()==1:
+		await smoke_click(retry_buttons[0].global_position+retry_buttons[0].size/2)
+	else:
+		ok=false
+	ok = ok and session.attempt==1 and not session.failed and session.has("cross")
 	show_settings()
 	await smoke_capture("release-settings")
 	show_licenses()
 	await smoke_capture("release-licences")
-	print("AFTERLIGHT %s: exported build boots, renders the legend, buys a tree node and reloads saves; editor=%s" % ["PASS" if ok else "FAIL",str(OS.has_feature("editor"))])
+	print("AFTERLIGHT %s: exported build renders, pins a tree purchase, persists failure and retries; editor=%s" % ["PASS" if ok else "FAIL",str(OS.has_feature("editor"))])
 	get_tree().quit(0 if ok else 1)
 
 func smoke_capture(filename: String) -> void:

@@ -195,18 +195,11 @@ func prepare() -> void:
 		"salvage":
 			finish_fixture()
 			metric="salvage"
-		"relay","launchpad":
+		"relay","launchpad","autodescent":
 			session.board.setup(7,7,10,2)
-			if id=="launchpad":
+			if id in ["launchpad","autodescent"]:
 				action="drone"
 				grant("drone")
-		"autodescent":
-			session.index=8
-			finish_fixture()
-			session.reveal(target)
-			action="drone"
-			metric="layer"
-			grant("drone")
 	session.events.clear()
 
 func run_action() -> void:
@@ -244,7 +237,7 @@ func snapshot() -> Dictionary:
 	for event in session.events:
 		if event.type=="salvage":
 			salvage+=event.amount
-	return {"board":session.board.to_dict(),"energy":session.energy,"capacity":session.capacity(),"pulse":session.probe_charge,"chain":session.multiplier(),"light":session.credits,"salvage":salvage,"open":session.board.open_count(),"flags":session.board.cells.count(MineBoard.FLAG),"plates":session.board.plates[target] if target<session.board.cells.size() else 0,"layer":session.stratum+1}
+	return {"board":session.board.to_dict(),"energy":session.energy,"capacity":session.capacity(),"pulse":session.probe_charge,"chain":session.multiplier(),"light":session.board_earned,"salvage":salvage,"open":session.board.open_count(),"flags":session.board.cells.count(MineBoard.FLAG),"plates":session.board.plates[target] if target<session.board.cells.size() else 0,"layer":session.stratum+1}
 
 func metric_icon() -> String:
 	return {"energy":"energy","capacity":"battery","pulse":"pulse","chain":"upgrade:chain","light":"prism","salvage":"prism","open":"lens","flags":"flag","plates":"upgrade:drill","layer":"upgrade:autodescent"}.get(metric,"lens")

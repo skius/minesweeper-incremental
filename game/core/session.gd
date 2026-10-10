@@ -30,6 +30,9 @@ var overclock: float = 0.0
 var overdrive_seconds: float = 0.0
 var chain: int = 0
 var strikes: int = 0
+var damage: int = 0
+var attempt: int = 0
+var failed: bool = false
 var manual_actions: int = 0
 var board_earned: int = 0
 var finished: bool = false
@@ -72,11 +75,13 @@ func stars() -> int:
 		sum += int(value)
 	return sum
 
-func start_board() -> void:
+func start_board(reset_attempt: bool = true) -> void:
+	if reset_attempt:
+		attempt = 0
 	stratum = 0
 	layer_ready = false
 	var spec := Content.contract(index, trial, stratum)
-	board.setup(spec.width, spec.height, spec.mines, spec.seed, spec.crust, spec.form)
+	board.setup(spec.width, spec.height, spec.mines, spec.seed+attempt*15485863, spec.crust, spec.form)
 	board_seconds = 0
 	energy = capacity()
 	probe_charge = 1
@@ -86,6 +91,8 @@ func start_board() -> void:
 	if not has("legacy"):
 		chain = 0
 	strikes = 0
+	damage = 0
+	failed = false
 	manual_actions = 0
 	board_earned = 0
 	finished = false
@@ -93,6 +100,17 @@ func start_board() -> void:
 	last_reward.clear()
 	drone_status = "Make the first opening" if has("drone") else "Scout drone unlocks after field 2"
 	events.append({"type":"new_board"})
+
+func retry_board() -> bool:
+	if not failed:
+		return false
+	attempt += 1
+	chain = 0
+	start_board(false)
+	return true
+
+func core_reward() -> int:
+	return 1 + region()/2 + (3 if index%Content.REGION_LENGTH==15 and trial<0 else 0) + (1 if strikes==0 and has("bounty") else 0) + (3 if trial>=0 and not trial_medals.has(str(trial)) else 0)
 
 func next_board() -> void:
 	if not finished:
@@ -143,19 +161,22 @@ func unlock_reason(item: Dictionary) -> String:
 	return "READY TO INSTALL"
 
 func add_light(amount: int) -> void:
-	credits += amount
-	total_light += amount
-	board_earned += amount
+	# Cargo is banked only on a successful clear. Failed attempts cannot fund
+	# purchases or farm permanent currency, even through plating and pockets.
+	if not failed:
+		board_earned += amount
 
 func reveal(i: int, source: String = "manual") -> void:
 	action_depth+=1
-	if source=="drone" and i>=0 and i<board.cells.size() and not finished and not layer_ready:
+	if source=="drone" and i>=0 and i<board.cells.size() and not failed and not finished and not layer_ready:
 		events.append({"type":"drone_work","cell":i})
 	_reveal(i,source)
 	action_depth-=1
 	check_completion()
 
 func break_plates(i: int, power: int, source: String) -> int:
+	if failed or finished:
+		return 0
 	var removed := mini(power,board.plates[i])
 	if removed<=0:
 		return 0
@@ -171,7 +192,7 @@ func break_plates(i: int, power: int, source: String) -> int:
 	return removed
 
 func _reveal(i: int, source: String = "manual") -> void:
-	if finished or layer_ready or i < 0 or i >= board.cells.size():
+	if failed or finished or layer_ready or i < 0 or i >= board.cells.size():
 		return
 	if board.cells[i] == MineBoard.OPEN:
 		if source == "manual":
@@ -204,11 +225,20 @@ func _reveal(i: int, source: String = "manual") -> void:
 		if board.cells[cell] == MineBoard.HIT:
 			strikes += 1
 			total_strikes += 1
-			if not has("shield") or strikes > 1:
+			var protected := has("shield") and strikes==1
+			var lost := 0
+			if not protected:
+				damage += 1
 				chain = 0
-				energy = maxf(0, energy - 3)
-			events.append({"type":"strike","cell":cell,"protected":has("shield") and strikes == 1})
-			if has("sentry") and has("shield") and strikes == 1:
+				energy = 0
+				lost = board_earned if damage>=2 else ceili(board_earned/2.0)
+				board_earned -= lost
+				if damage>=2:
+					failed = true
+			events.append({"type":"strike","cell":cell,"protected":protected,"lost":lost})
+			if failed:
+				events.append({"type":"failed","lost":lost})
+			if has("sentry") and protected:
 				probe_one("rescue")
 			continue
 		total_reveals += 1
@@ -252,12 +282,15 @@ func _reveal(i: int, source: String = "manual") -> void:
 	if first and has("relay"):
 		for _j in range(2):
 			probe_one("tool")
+	if first and has("autodescent") and not (trial>=0 and trial%2==0):
+		for _j in range(3):
+			probe_one("tool")
 	if region() == 3 and source == "manual" and manual_actions % 8 == 0:
 		probe_one("thermal")
 	check_completion()
 
 func flag(i: int) -> void:
-	if finished or layer_ready:
+	if failed or finished or layer_ready:
 		return
 	if board.toggle_flag(i):
 		events.append({"type":"flag","cell":i,"auto":false})
@@ -269,7 +302,7 @@ func chord(i: int) -> void:
 	check_completion()
 
 func _chord(i: int) -> void:
-	if finished:
+	if failed or finished:
 		return
 	var targets := board.chord_targets(i)
 	if has("conductor") and i >= 0 and i < board.cells.size() and board.cells[i] == MineBoard.OPEN:
@@ -287,6 +320,8 @@ func _chord(i: int) -> void:
 	for n in targets:
 		if board.cells[n] == MineBoard.HIDDEN:
 			reveal(n, "manual")
+			if strikes!=strikes_before:
+				break # One mistaken chord costs at most one hull hit.
 	if strikes == strikes_before:
 		if has("flywheel"):
 			probe_charge = minf(probe_capacity(),probe_charge+1)
@@ -372,7 +407,7 @@ func use_tool(id: String, i: int = -1) -> bool:
 	return used
 
 func _use_tool(id: String, i: int = -1) -> bool:
-	if finished or layer_ready or not tool_available(id):
+	if failed or finished or layer_ready or not tool_available(id):
 		return false
 	if id == "probe":
 		if probe_charge < 1:
@@ -420,6 +455,8 @@ func _use_tool(id: String, i: int = -1) -> bool:
 	return true
 
 func probe_one(source: String, target: int = -1) -> void:
+	if failed or finished:
+		return
 	var cell := board.safe_probe()
 	if board.generated and (target >= 0 or has("cartogram")):
 		var best := -1000000.0
@@ -441,11 +478,7 @@ func probe_one(source: String, target: int = -1) -> void:
 		reveal(cell, source)
 
 func tick(delta: float) -> void:
-	if layer_ready:
-		if has("autodescent") and drones_enabled:
-			descent_clock += delta
-			if descent_clock >= 1.2:
-				advance_layer()
+	if failed or finished:
 		return
 	if not board.generated and has("launchpad") and drones_enabled and not (trial>=0 and trial%2==0):
 		drone_clock += delta
@@ -471,7 +504,7 @@ func tick(delta: float) -> void:
 
 func drone_cycle() -> void:
 	for _j in range(drone_count()):
-		if finished or layer_ready or board.completed():
+		if failed or finished or layer_ready or board.completed():
 			return
 		var moves := board.deductions(has("logic"))
 		if not moves.safe.is_empty():
@@ -497,7 +530,7 @@ func drone_cycle() -> void:
 			return
 
 func check_completion() -> void:
-	if action_depth>0 or finished or layer_ready or not board.completed():
+	if action_depth>0 or failed or finished or layer_ready or not board.completed():
 		return
 	var correct_flags := 0
 	for i in range(board.cells.size()):
@@ -510,40 +543,41 @@ func check_completion() -> void:
 		energy=capacity()
 	if flag_reward>0:
 		events.append({"type":"salvage","amount":flag_reward,"flags":correct_flags})
-	if stratum+1 < Content.strata_for(index,trial):
-		layer_ready = true
-		descent_clock = 0
-		add_light(40+region()*30)
-		# First-time layer completions feed research, so branches do not grind on light alone.
-		if stratum%3 == 2:
-			cores += 1
-		events.append({"type":"layer_complete"})
-		return
-	finished = true
+	_bank_clear(correct_flags,flag_reward)
+
+func _bank_clear(correct_flags: int, flag_reward: int) -> void:
 	var rating := 3 if strikes == 0 else (2 if strikes <= 2 else 1)
 	var bonus := 70 + index * 12
-	var reward_cores := 1 + (1 if strikes == 0 and has("bounty") else 0)
+	if index==0 and trial<0:
+		bonus=maxi(bonus,124-board_earned) # A surviving first clear still funds Lens + one tool.
+	var reward_cores := core_reward()
 	if index % Content.REGION_LENGTH == 15 and trial < 0:
 		bonus *= 2
-		reward_cores += 3
 	if trial >= 0:
 		var key := str(trial)
 		if not trial_medals.has(key):
-			reward_cores += 3
 			bonus += 600 + trial * 120
 		trial_medals[key] = maxi(rating, int(trial_medals.get(key, 0)))
 	else:
 		medals[str(index)] = maxi(rating, int(medals.get(str(index), 0)))
 	cores += reward_cores
 	add_light(bonus)
+	credits += board_earned
+	total_light += board_earned
+	finished = true
 	last_reward = {"bonus":bonus+flag_reward,"cores":reward_cores,"rating":rating,"flags":correct_flags,"earned":board_earned,"seconds":board_seconds,"region_end":index % Content.REGION_LENGTH == 15 and trial < 0}
 	events.append({"type":"complete","reward":last_reward.duplicate()})
 
 func to_dict() -> Dictionary:
-	return {"version":2,"stratum":stratum,"layer_ready":layer_ready,"excavations":excavations,"manual_excavations":manual_excavations,"index":index,"trial":trial,"credits":credits,"cores":cores,"upgrades":upgrades,"medals":medals,"trial_medals":trial_medals,"total_light":total_light,"total_reveals":total_reveals,"total_flags":total_flags,"total_drone":total_drone,"total_strikes":total_strikes,"play_seconds":play_seconds,"board_seconds":board_seconds,"energy":energy,"probe_charge":probe_charge,"drone_clock":drone_clock,"overclock":overclock,"overdrive_seconds":overdrive_seconds,"descent_clock":descent_clock,"chain":chain,"strikes":strikes,"manual_actions":manual_actions,"board_earned":board_earned,"finished":finished,"completed_campaign":completed_campaign,"drones_enabled":drones_enabled,"last_reward":last_reward,"paid_flags":paid_flags,"seen_intro":seen_intro,"livery":livery,"board":board.to_dict()}
+	return {"version":3,"damage":damage,"attempt":attempt,"failed":failed,"stratum":stratum,"layer_ready":layer_ready,"excavations":excavations,"manual_excavations":manual_excavations,"index":index,"trial":trial,"credits":credits,"cores":cores,"upgrades":upgrades,"medals":medals,"trial_medals":trial_medals,"total_light":total_light,"total_reveals":total_reveals,"total_flags":total_flags,"total_drone":total_drone,"total_strikes":total_strikes,"play_seconds":play_seconds,"board_seconds":board_seconds,"energy":energy,"probe_charge":probe_charge,"drone_clock":drone_clock,"overclock":overclock,"overdrive_seconds":overdrive_seconds,"descent_clock":descent_clock,"chain":chain,"strikes":strikes,"manual_actions":manual_actions,"board_earned":board_earned,"finished":finished,"completed_campaign":completed_campaign,"drones_enabled":drones_enabled,"last_reward":last_reward,"paid_flags":paid_flags,"seen_intro":seen_intro,"livery":livery,"board":board.to_dict()}
 
 static func from_dict(data: Dictionary) -> GameSession:
-	if not MineBoard.integer_value(data.get("version"),1,2) or not data.get("board") is Dictionary:
+	if not MineBoard.integer_value(data.get("version"),1,3) or not data.get("board") is Dictionary:
+		return null
+	var version: int = int(data.version)
+	if version==3 and (not data.has("damage") or not data.has("attempt") or not data.has("failed")):
+		return null
+	if not MineBoard.integer_value(data.get("damage",0),0,2) or not MineBoard.integer_value(data.get("attempt",0),0,100000000):
 		return null
 	var loaded_board := MineBoard.from_dict(data.board)
 	if loaded_board == null:
@@ -560,7 +594,7 @@ static func from_dict(data: Dictionary) -> GameSession:
 	for key in ["board_seconds","drone_clock","overclock","overdrive_seconds","descent_clock"]:
 		if not MineBoard.number_value(data.get(key,0)):
 			return null
-	for key in ["finished","completed_campaign","drones_enabled","seen_intro","layer_ready"]:
+	for key in ["finished","completed_campaign","drones_enabled","seen_intro","layer_ready","failed"]:
 		if data.has(key) and not data[key] is bool:
 			return null
 	if not MineBoard.integer_value(data.get("trial",-1),-1,11) or not MineBoard.integer_value(data.get("livery",0),0,2):
@@ -574,7 +608,7 @@ static func from_dict(data: Dictionary) -> GameSession:
 	if data.get("finished",false) and not valid_reward(data.get("last_reward",{})):
 		return null
 	var result := GameSession.new()
-	for key in ["stratum","layer_ready","excavations","manual_excavations","index","trial","credits","cores","medals","trial_medals","total_light","total_reveals","total_flags","total_drone","total_strikes","play_seconds","board_seconds","energy","probe_charge","drone_clock","overclock","overdrive_seconds","descent_clock","chain","strikes","manual_actions","board_earned","finished","completed_campaign","drones_enabled","last_reward","seen_intro","livery"]:
+	for key in ["damage","attempt","failed","stratum","layer_ready","excavations","manual_excavations","index","trial","credits","cores","medals","trial_medals","total_light","total_reveals","total_flags","total_drone","total_strikes","play_seconds","board_seconds","energy","probe_charge","drone_clock","overclock","overdrive_seconds","descent_clock","chain","strikes","manual_actions","board_earned","finished","completed_campaign","drones_enabled","last_reward","seen_intro","livery"]:
 		if data.has(key):
 			result.set(key, data[key].duplicate(true) if data[key] is Dictionary or data[key] is Array else data[key])
 	for id in data.upgrades:
@@ -590,12 +624,33 @@ static func from_dict(data: Dictionary) -> GameSession:
 	result.board = loaded_board
 	result.energy = clampf(result.energy, 0, result.capacity())
 	result.probe_charge = clampf(result.probe_charge, 0, result.probe_capacity())
-	if (result.finished or result.layer_ready) != loaded_board.completed() or result.stratum < 0 or result.stratum >= Content.strata_for(result.index,result.trial):
-		return null
-	if result.finished and result.layer_ready:
-		return null
-	if result.layer_ready and result.stratum+1>=Content.strata_for(result.index,result.trial):
-		return null
+	var old_depth := Content.legacy_strata_for(result.index,result.trial)
+	if version<3:
+		if (result.finished or result.layer_ready)!=loaded_board.completed() or result.stratum>=old_depth:
+			return null
+		if result.finished and result.layer_ready or result.layer_ready and result.stratum+1>=old_depth:
+			return null
+		# Old earnings are already banked. Keep the exact board without paying twice.
+		result.damage=0
+		result.failed=false
+		result.attempt=0
+		result.stratum=0
+		if not result.finished:
+			result.board_earned=0
+		if result.layer_ready:
+			result.layer_ready=false
+			result._bank_clear(0,0)
+	else:
+		if not loaded_board.generated and (result.damage>0 or result.strikes>0 or result.failed):
+			return null
+		if result.layer_ready or result.stratum!=0 or result.failed and result.finished:
+			return null
+		if result.damage>result.strikes or result.failed!=(result.damage==2):
+			return null
+		if result.failed and result.board_earned!=0:
+			return null
+		if not result.failed and result.finished!=loaded_board.completed():
+			return null
 	result.events.clear()
 	return result
 
@@ -630,17 +685,5 @@ func excavation_power(source: String) -> int:
 	return 1
 
 func advance_layer() -> bool:
-	if not layer_ready:
-		return false
-	stratum += 1
-	layer_ready = false
-	var spec := Content.contract(index,trial,stratum)
-	board.setup(spec.width,spec.height,spec.mines,spec.seed,spec.crust,spec.form)
-	drone_clock = 0
-	if not has("legacy"):
-		chain = 0
-	energy = minf(capacity(),energy+4)
-	probe_charge = maxf(1,probe_charge)
-	paid_flags.clear()
-	events.append({"type":"new_layer"})
-	return true
+	# Retained for old callers; every field is now a complete expedition.
+	return false

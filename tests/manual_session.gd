@@ -74,7 +74,7 @@ func capture() -> void:
 	var visible := {"id":last_id,"screen":app.screen,"modal":app.modal_kind,"tool":app.selected_tool}
 	if app.session != null:
 		var s: GameSession = app.session
-		visible.merge({"index":s.index,"credits":s.credits,"cores":s.cores,"energy":s.energy,"strikes":s.strikes,"finished":s.finished,"upgrades":s.upgrades,"width":s.board.width,"height":s.board.height,"cells":[]})
+		visible.merge({"index":s.index,"credits":s.credits,"cores":s.cores,"energy":s.energy,"strikes":s.strikes,"damage":s.damage,"cargo":s.board_earned,"failed":s.failed,"attempt":s.attempt,"finished":s.finished,"upgrades":s.upgrades,"width":s.board.width,"height":s.board.height,"cells":[]})
 		for i in range(s.board.cells.size()):
 			visible.cells.append(str(s.board.clues[i]) if s.board.cells[i]==MineBoard.OPEN else ("F" if s.board.cells[i]==MineBoard.FLAG else ("X" if s.board.cells[i]==MineBoard.HIT else "?")))
 	var file := FileAccess.open(path+"visible.json",FileAccess.WRITE)

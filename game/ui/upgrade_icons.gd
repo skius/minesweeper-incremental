@@ -173,10 +173,10 @@ static func draw(c: CanvasItem, id: String, p: Vector2, size: float, color: Colo
 			line(c,p,[[-10,4],[-10,10],[10,10],[10,4]],s,color)
 			line(c,p,[[0,7],[0,1]],s,color)
 		"autodescent":
-			for y in [-8,-1,6]:
-				line(c,p,[[-10,y],[-4,y]],s,color)
-				line(c,p,[[4,y],[10,y]],s,color)
-			line(c,p,[[0,-10],[0,10],[-4,6],[0,10],[4,6]],s,color,2)
+			drone(c,p+Vector2(0,-7)*s,s*0.55,color)
+			for x in [-9,0,9]:
+				line(c,p,[[0,-2],[x,5]],s,color)
+				circle(c,p,Vector2(x,9),2.5,s,color)
 		"aurora":
 			line(c,p,[[-11,9],[11,9]],s,color)
 			c.draw_arc(p+Vector2(0,8)*s,7*s,PI,TAU,20,color,maxf(1.2,1.7*s),true)

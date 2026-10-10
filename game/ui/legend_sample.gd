@@ -21,6 +21,12 @@ func _draw() -> void:
 		var opened := kind=="clue" or (kind=="crystal" and not covered_crystal)
 		Palette.bevel(self,tile,Palette.GLASS if opened else Palette.TILE,3,not opened)
 	match kind:
+		"hull":
+			Palette.icon(self,"shield",center-Vector2(0,10),36,Palette.MINT)
+			for i in range(2):
+				Palette.bevel(self,Rect2(center+Vector2(-22+i*25,17),Vector2(19,18)),Palette.MINT,2,true)
+		"cargo":
+			Palette.crystal(self,center,42)
 		"clue":
 			draw_string(ThemeDB.fallback_font,center+Vector2(-11,13),"3",HORIZONTAL_ALIGNMENT_LEFT,-1,36,Palette.CLUES[3])
 		"flag":

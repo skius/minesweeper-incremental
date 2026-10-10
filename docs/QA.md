@@ -1,43 +1,49 @@
-# Revision 1.2.1 verification
+# Revision 1.3.0 verification
 
-This supersedes the [1.2 record](QA-1.2.md). The 1.2.1 patch changes presentation, contextual help and a stale tree-selection bug; campaign rules and the previously measured pacing remain unchanged. Native sessions use the supplied Godot 4.7.2 with Compatibility rendering, dummy audio, a separate Windows desktop and isolated saves under `test_runs/`. The player supplied feedback from a short session on the previous build; that feedback drove this revision. No independent full-campaign human playtest is claimed.
+This supersedes [1.2.1](QA-1.2.1.md). This revision removes repeated strata between rewards, makes failed attempts lose unbanked cargo, and pins tree selection on click. All launches use the supplied Godot 4.7.2 Compatibility renderer. Test saves/logs are isolated; native windows run muted on a separate Windows desktop. No third-party or generative assets were used.
 
-## Rules, saves and progression
+## Rules, economy and saves
 
-- 89,764 rule/persistence checks pass. These include an independent 1,924-case malformed-save corpus, accurate upgrade demonstrations, terrain determinism, every possible first opening, mechanical upgrade regressions and validated backup recovery. The loader checks finite values, types, cell arithmetic and reward state before accepting data. Loading a clone no longer shares mutable reward dictionaries with its source.
-- The first clear funds Lens and exactly one of Crossbeam or Scout, with the next clear funding the other. Future rank/prerequisite nodes stay hidden. Terrain rotates through shelf, shaft and geode forms from site 7; mine placement and clue arithmetic use an independent deterministic stream. Existing saves retain their stored generation form.
-- Three complete visible-information policies reach the ending, acquire all fifty discoveries and encounter no solver/tool strikes or economic dead ends. These policies use deductions, flags, chords, footprint scoring and free probes; they do not read the hidden mine map.
+87,897 checks pass in `test.log`. This includes the independent reviewer’s 252 strike/escrow/retry/migration checks, malformed-save backup recovery, deterministic truthful boards, first-clear choices, tool combinations and all 50 real-rule upgrade previews. A lower count than 1.2.1 reflects the removed repeated-strata test iterations, not skipped failure checks.
 
-| Policy | Decision interval | Campaign minutes | Inputs |
-|---|---:|---:|---:|
-| Tools first | 1 second | 163.5 | 8,133 |
-| Fleet first | 1 second | 165.2 | 8,275 |
-| Deliberate craft | 3 seconds | 319.6 | 5,534 |
+Two unprotected strikes fail an attempt. The first removes half current cargo (rounded up), drains energy and clears the chain; the second discards remaining cargo. Shield absorbs the first strike; it still lowers the rating and loses Bounty’s perfect-clear core. One mistaken chord costs at most one strike. Every mutation/automation path stops after failure, even when a nested Seismic action uncovered the last safe tile first. Failure wins over completion and no payout occurs. Buying from cargo is impossible.
 
-All contain 628 strata across 96 sites. Menus receive four seconds per site and purchases two seconds each, with no artificial waiting inserted. The longest purchase gaps are 11.2, 11.1 and 18.9 minutes. The final discovery arrives at site 92, at minutes 152.3, 153.9 and 300.7 respectively. These are pacing models, not verified human durations or optimal speedruns; enjoyment remains a human judgement.
+Retries preserve banked credits/cores/upgrades, reset temporary state, and use an attempt-indexed deterministic seed. New-schema saves require damage/failure/attempt fields and reject impossible unopened failures. Old v1/v2 saves retain exact board state and banked resources, without retroactive hull damage. Old active board earnings are not credited twice; old completed intermediate strata become a finished site without replaying flag salvage. Migration is idempotent after saving. The validated backup remains available.
 
-On the identical plated site-49 stratum, early/middle/complete equipment takes 284/11/8 simulated seconds and 86/10/6 inputs to uncover 203 safe tiles, with zero strikes. This separately checks that equipment overpowers fixed work instead of only matching larger fields.
+The campaign has 96 boards, one per site. Each pays 1/2/3 base cores by region pair plus applicable relay, trial and Bounty bonuses. First-clear earnings still fund Lens plus one 100-light starter even after a surviving hit. Survey volley replaces obsolete Autodescent with three extra safe openings.
 
-## Native interface and visual review
+| Campaign policy | Decision interval | Minutes | Inputs | Maximum purchase gap |
+|---|---:|---:|---:|---:|
+| Fast |1second|35.8|1,590|1.8minutes|
+| Fleet-first |1second|36.9|1,643|1.8minutes|
+| Deliberate |3seconds|71.2|1,185|4.2minutes|
 
-The spacing review reproduced early hint/energy overlap, late hint/price overlap, tool-art/price collisions and three different centre axes. Explicit field geometry and a measured equipment dock replace the independent placements. The field/dock gap is sixteen logical pixels; controls and price rows have distinct bounds. Native assertions check pairwise button hit areas, centre axes, icon/price separation and meter spacing in early and late aimed states, including the minimum-size window.
+All policies finish with 50 upgrades and zero solver/tool strikes. Final Legacy purchase arrives at site 92. These are models (`balance_v2.json`), not independent human times or optimal speedruns. The former three-hour fast-player target is no longer met; removing the reported repeated work takes priority over duration padding. New meaningful content would be needed to restore that duration.
 
-Tools have recessed instrument wells, cast edges, hover lift, armed rings and activation feedback constrained to their own bounds. Gold crystals are faceted and plates are layered metal stacks; the same procedural drawings are used on the field, in upgrade previews and in the optional Legend. Reward numbers now appear beside currency, away from clues. The legend opens from its labelled field button or L, pauses play, and reveals only encountered concepts. Its seventeen-pixel body text fits the tested cards. Pulse samples follow installed upgrades; crystal samples show actual corner placement and honour Compass visibility; the fleet explanation accounts for Oracle. The independent reviewer found no remaining overlapping controls in the inspected states.
+All 12 optional trials pass. On identical plated site 49, early/middle/full equipment takes 284/11/7 seconds and 86/10/6 inputs, with zero strikes (`power_curve.json`).
 
-A retained selection could previously open a new tree on an invisible late upgrade. New-game reset and a visible-node clamp prevent this. Aimed discounted prices now match the energy meter, while stored Pulse charges explicitly remain free.
+## Anti-spam comparison
 
-- 508 native input/state/layout checks pass over 50 viewport captures. Coverage includes progressive disclosure, all fifty unique rendered symbols and descriptions, ten before/after preview contact sheets, beams, plating, descent, save failures/retries, menus, settings, trial restrictions and the ending.
-- Captures were inspected at 960 × 600, 1440 × 900, 1920 × 1080 and 1600 × 720. Viewport expansion removes letterboxing. Field zoom preserves clue readability at the smallest window; keyboard navigation follows the selected tile. Pointer aim is reprojected immediately after zoom, pan or overview navigation, with clicks tested without intervening mouse motion.
-- The terminal contains chain/fleet readouts and titlebar controls; counters no longer float across its border. Shared bevelled surfaces, restrained colours and six related icon families give all fifty nodes distinct identities. All six plating layers visibly differ, including 6→3 drilling and 6→2 beam outcomes.
-- Preview boards execute actual miniature game sessions. Clues, tool footprints, workers and outcomes come from real rules. Energy storage and actual aimed costs share one symbol beside the tools. Reduced motion keeps the final demonstration state visible.
-- The critical reviewer found and verified fixes for stale camera targeting, indistinguishable upper plating layers and corrupted text. Earlier review also supplied independent save regressions and identified reward/automation issues. This is evidence of a review, not a claim that every possible bug has been found.
-- During revision 1.2, a visible-clue agent session cleared the opening, bought Lens/Crossbeam/Scout, cleared a second site without strikes, observed the Scout uncover eighteen additional tiles and quit on the third board. The resumed session recorded 27 harness actions. This is agent-directed native play, distinct from automated campaign policies and the player's short prior-build session.
-- The 180-frame late-game sample measured 6.95 ms median / 7.03 ms p95 between process frames and 790 draw calls on an RTX 4090. This is not a minimum hardware claim.
+`strategy_balance.gd` runs 90 cases: 18 matched fixtures across fields 1, 6, 21, 48, 73, 96 and three attempt seeds, with natural equipment from the current full campaign. The visible-clue policy acts once per second. Blind row/random policies click ten times per second, with additional versions using the same footprint-scored safe tools, Pulse and passive fleet. No mode reads hidden mines. Failed attempts retry immediately, with no time penalty beyond one input. Each blind case gets at least 120 seconds or three times the solver duration.
 
-## Trials and delivery
+| Policy | Completed fixtures | Failed attempts | Total simulated seconds | Banked light |
+|---|---:|---:|---:|---:|
+| Clue policy |18/18|0|298.3|61,076|
+| Row spam |3/18|1,667|1,814.9|372|
+| Random spam |3/18|1,470|1,820.0|388|
+| Row + toolkit |9/18|1,006|1,111.7|46,826|
+| Random + toolkit |10/18|709|1,021.1|49,336|
 
-All twelve revised trials complete without strikes. The critical reviewer ran 96 comparisons using actual purchase sets from all three campaign policies and complete equipment, testing both old and proposed fields with five 0.2-second updates per one-second decision. The first pair stays familiar; later trials use denser shafts, shelves and geodes with two to six plating layers. The final Survey trial takes 61 simulated seconds / 61 actions (previously 14/14), and the Fleet trial 16 seconds / 11 actions (previously 3/3). Earlier fields remain faster with late equipment. Each trial stays one board; saved old trials retain their exact generated or unopened layouts. Survey trials suppress all fleet work, including a Coordinated strike triggered by a manual chord; only usable tools are displayed.
+Pure spam only completes the tiny tutorial fixtures, sometimes faster by luck. Tool-using policies can complete fully equipped late fields quickly, which is the intended automation payoff. This is evidence against blind clicking as an efficient campaign strategy, not proof that guessing can never win on one small board. Regression thresholds now fail when blind clicking becomes competitive in completion count or banked light per second. Results: `strategy.log` and `strategy_balance.json`.
 
-All geometry, textures, icons, music and sound are procedural and repository-owned. No image/audio generation service or downloaded media was used. Six oscillator-based scores and their synthesis source are retained; engine/library licences remain accessible in-game.
+## Native input, visuals and play
 
-Windows and Compatibility Web exports both succeed. The actual Windows executable passes boot, render, input, the new field legend, a tree purchase, save and reload checks with `editor=false`. The verified 1.2.1 archive contains exactly that executable, its PCK and the player README (39,759,848 bytes; archive SHA-256 recorded in STATUS.md). Each entry matches its exported file. Source build: `9827bec`. The executable is tested independently of the editor; browser runtime/persistence and lower-end hardware remain unverified. Tests never touch normal player saves. Raw player feedback and reports remain local and are excluded from commits. Store integration remains outside scope.
+532 native checks pass over 53 Godot viewport captures (`shots.log`). Tests cover persistent clicked selection while hovering another node and purchasing, keyboard selection, hull damage/failure/retry, immediate single-board rewards, disclosure, settings, modal isolation, field controls, zoom/pan, aimed costs, small/wide windows, save errors and all upgrade previews.
+
+Inspected captures include `v5_41_tree_pinned`, `v5_42_single_field_clear`, `v5_43_hull_damaged`, `v5_44_retry`, early/full legends and the late trial. Selection has a fixed mint frame and corner tabs; hover uses a thin neutral edge. Hull, cargo and projected cores have distinct spacing in the field status strip; idle drone positions moved to the opposite end. The existing centre axes and equipment gaps remain. Legend entries match hull/cargo behavior and only mention Shield when installed. Final late-game sample: 6.95 ms median/7.32 ms p95, 872 draw calls on RTX 4090; not a minimum-hardware claim.
+
+Agent-directed native play used visible clues, flags/chords, Pulse and aimed Crossbeam. It cleared field 1, bought Lens/Crossbeam, exercised first-hit damage and second-hit failure on field 2, retried the fresh layout and cleared it without a strike. Banked resources/upgrades survived. The first launcher reached its 900-second timeout during an interrupted user turn; the saved field was then reloaded, advanced to field 3, opened and quit mid-board. `manual_v5_resume.log` exits successfully. This is an agent play session plus scripted checks, not an independent human playtest.
+
+## Release
+
+Source milestone and Windows/Web export, standalone smoke and archive verification are being finalized. Browser runtime/persistence and lower-end hardware remain unverified. Art/audio remain procedural; no store integration was added.

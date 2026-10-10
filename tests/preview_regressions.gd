@@ -24,7 +24,7 @@ static func run(check: Callable) -> void:
 	check.call(results.supercap.after.capacity==40 and results.supercap.before.capacity<40,"storm preview shows changed storage")
 	check.call(results.shield.after.chain==results.shield.before.chain,"shield preview retains the chain")
 	check.call(results.sentry.after.open>results.sentry.before.open,"flare preview actually rescues safe ground")
-	check.call(results.autodescent.after.layer==results.autodescent.before.layer+1,"descent preview changes stratum")
+	check.call(results.autodescent.after.open>results.launchpad.after.open,"volley preview adds safe openings beyond launch rail")
 	check.call(results.flywheel.after.pulse>=1,"flywheel preview replenishes a free pulse")
 	check.call(results.echochamber.after.pulse>=1,"hollow preview replenishes a free pulse")
 	check.call(results.battery.after.energy>results.battery.before.energy,"battery preview converts a pocket into energy")

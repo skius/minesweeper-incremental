@@ -96,7 +96,7 @@ func ensure_cell_visible(i: int) -> void:
 func reset_drone_positions() -> void:
 	for i in range(drone_positions.size()):
 		drone_hold[i]=0
-		drone_targets[i]=Vector2(32+i*28,80)
+		drone_targets[i]=Vector2(size.x-200-i*22,80)
 		drone_positions[i]=drone_targets[i]
 
 func minimap_rect() -> Rect2:
@@ -167,8 +167,8 @@ func visit_drone(cell: int) -> void:
 
 func ensure_drones(count: int) -> void:
 	while drone_positions.size() < count:
-		drone_positions.append(Vector2(32+drone_positions.size()*28,80))
-		drone_targets.append(Vector2(32+drone_targets.size()*28,80))
+		drone_positions.append(Vector2(size.x-200-drone_positions.size()*22,80))
+		drone_targets.append(Vector2(size.x-200-drone_targets.size()*22,80))
 		drone_hold.append(0.0)
 
 func _process(delta: float) -> void:
@@ -189,7 +189,7 @@ func _process(delta: float) -> void:
 	for i in range(drone_positions.size()):
 		drone_hold[i]=maxf(0,drone_hold[i]-delta)
 		if drone_hold[i]<=0:
-			drone_targets[i]=Vector2(32+i*28,80)
+			drone_targets[i]=Vector2(size.x-200-i*22,80)
 		drone_positions[i] = drone_positions[i].lerp(drone_targets[i],minf(1,delta*8)) if motion>0 else drone_targets[i]
 	queue_redraw()
 
@@ -288,7 +288,7 @@ func _draw() -> void:
 			Palette.icon(self,"flag",rect.get_center(),tile_size*0.4*pop,Palette.FLAG)
 		elif cell == MineBoard.HIT:
 			Palette.icon(self,"nova",rect.get_center(),tile_size*0.38,Palette.CORAL)
-		if (session.finished or session.layer_ready) and b.mines[i] == 1 and cell == MineBoard.HIDDEN:
+		if (session.failed or session.finished or session.layer_ready) and b.mines[i] == 1 and cell == MineBoard.HIDDEN:
 			Palette.icon(self,"mine",rect.get_center(),tile_size*0.32,Palette.INK)
 		if i==selected and not blocked:
 			draw_rect(rect.grow(1),Palette.WHITE if keyboard_cell>=0 else Color(Palette.WHITE,0.65),false,2 if keyboard_cell>=0 else 1)

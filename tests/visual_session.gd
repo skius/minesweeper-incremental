@@ -222,17 +222,39 @@ func run(root_app: Control) -> void:
 	await click(app.board_view.position+app.board_view.cell_position(12))
 	check(app.selected_tool=="" and app.session.strikes==0,"focused Pulse input opens safe ground")
 	app.session.drones_enabled=false
-	while not app.session.layer_ready:
+	while not app.session.finished:
 		app.session.probe_one("tool")
 	app.consume_events()
-	await frames(5)
-	await shot("v2_15_descent")
-	var saved_layer: int=app.session.stratum
-	await click(app.hud.descend.global_position+app.hud.descend.size/2)
-	check(app.session.stratum==saved_layer+1,"native descent advances exactly one stratum")
+	await frames(90)
+	await shot("v5_42_single_field_clear")
+	check(app.session.cores>14 and app.session.finished,"one board immediately pays cores and completes the site")
 	app.save_game()
 	var restored: GameSession=app.store.load_session()
-	check(restored!=null and restored.stratum==app.session.stratum and restored.board.plates==app.session.board.plates,"native plated/depth save roundtrip")
+	check(restored!=null and restored.finished and restored.board.plates==app.session.board.plates,"native clear save roundtrip")
+	app.next_expedition()
+	check(app.session.index==39 and not app.session.board.generated,"next site needs no extra strata")
+	configure(3)
+	app.session.drones_enabled=false
+	await click(app.board_view.global_position+app.board_view.cell_position(40))
+	var hazards: Array[int]=[]
+	for i in range(app.session.board.cells.size()):
+		if app.session.board.mines[i]:
+			hazards.append(i)
+	var bank_before: int=app.session.credits
+	var seed_before: int=app.session.board.board_seed
+	await click(app.board_view.global_position+app.board_view.cell_position(hazards[0]))
+	check(app.session.damage==1 and not app.session.failed,"first native strike damages one hull segment")
+	await shot("v5_43_hull_damaged")
+	await click(app.board_view.global_position+app.board_view.cell_position(hazards[1]))
+	await frames(100)
+	check(app.session.failed and app.modal_kind=="failed","second strike blocks field and presents retry")
+	check(app.session.credits==bank_before and app.session.board_earned==0,"native failure loses cargo but preserves bank")
+	await shot("v5_44_retry")
+	var retry_buttons: Array=app.modal.find_children("*","Button",true,false).filter(func(b): return b.text=="Retry field →")
+	check(retry_buttons.size()==1,"failed dialog has a clear retry action")
+	await click(retry_buttons[0].global_position+retry_buttons[0].size/2)
+	check(not app.session.failed and app.session.damage==0 and app.session.index==3 and app.session.attempt==1,"native retry resets attempt at the same site")
+	check(app.session.board.board_seed!=seed_before and app.session.credits==bank_before,"retry changes layout seed without taking banked light")
 	configure(88)
 	await click(app.board_view.position+app.board_view.cell_position(180))
 	await frames(110)

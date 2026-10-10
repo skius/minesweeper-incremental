@@ -46,21 +46,21 @@ static func run(check: Callable) -> void:
 	check.call(mixed.manual_excavations==6 and count_event(mixed,"seismic")==1,"tool work cannot consume the sixth manual excavation")
 	var restored := GameSession.from_dict(mixed.to_dict())
 	check.call(restored!=null and restored.manual_excavations==6,"manual excavation rhythm survives save/reload")
-	# Every layer pays exactly once, not just the final layer of a site.
+	# Every board pays once, including its verified flags.
 	var salvage := fixture(4)
 	salvage.upgrades.assign(["salvage"])
 	salvage.board.cells.fill(MineBoard.OPEN)
 	salvage.board.cells[5]=MineBoard.FLAG
 	salvage.board.cells[6]=MineBoard.HIDDEN
 	salvage.reveal(6)
-	check.call(salvage.layer_ready and salvage.credits==50,"intermediate layer pays reveal, flag salvage and clear bonus")
-	check.call(salvage.total_flags==1 and count_event(salvage,"salvage")==1,"intermediate flags enter lifetime records once")
+	check.call(salvage.finished and salvage.credits==128,"single field pays reveal, flag salvage and clear bonus")
+	check.call(salvage.total_flags==1 and count_event(salvage,"salvage")==1,"cleared field flags enter lifetime records once")
 	var paid := salvage.credits
 	salvage.check_completion()
 	restored=GameSession.from_dict(salvage.to_dict())
 	if restored!=null:
 		restored.check_completion()
-	check.call(restored!=null and restored.credits==paid,"reloaded layer checkpoint cannot pay salvage twice")
+	check.call(restored!=null and restored.credits==paid,"reloaded clear checkpoint cannot pay salvage twice")
 	var harvester := fixture()
 	harvester.board.cells.fill(MineBoard.OPEN)
 	harvester.board.cells[0]=MineBoard.HIDDEN
@@ -109,7 +109,7 @@ static func run(check: Callable) -> void:
 	descent.layer_ready=true
 	descent.drones_enabled=false
 	descent.tick(10)
-	check.call(descent.stratum==0,"pausing fleet also pauses autonomous descent")
+	check.call(descent.stratum==0,"obsolete descent cannot add repeated strata")
 	var fleet_build := fixture()
 	fleet_build.upgrades.assign(["drone","pair","fleet","swarm","overdrive"])
 	check.call(fleet_build.capacity()>=fleet_build.tool_cost("overdrive"),"fleet branch can power its own overdrive without buying another branch")
@@ -153,7 +153,7 @@ static func run(check: Callable) -> void:
 	aurora.upgrades.assign(["aurora","supercap"])
 	aurora.energy=0
 	aurora.reveal(6)
-	check.call(aurora.layer_ready and aurora.energy==40,"aurora refills energy at intermediate strata too")
+	check.call(aurora.finished and aurora.energy==40,"aurora refills energy on field clear")
 	# A paid overdrive must outperform a free pocket boost and cannot be wasted
 	# by activating its button again while it is already running.
 	var boost := fixture()

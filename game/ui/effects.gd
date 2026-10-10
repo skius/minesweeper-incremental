@@ -24,7 +24,7 @@ func burst(origin: Vector2, color: Color, count: int = 12, target: Vector2 = Vec
 func popup(origin: Vector2, text: String, color: Color) -> void:
 	for popup_item in popups:
 		if popup_item.age<0.2 and popup_item.p.distance_to(origin)<95 and text.begins_with("+"):
-			popup_item.text="+%d" % (int(popup_item.text.trim_prefix("+"))+int(text.trim_prefix("+")))
+			popup_item.text="+%d" % (int(popup_item.text.trim_prefix("+"))+int(text.trim_prefix("+"))) + (" cargo" if text.ends_with(" cargo") else "")
 			return
 	popups.append({"p":origin,"text":text,"color":color,"age":0.0})
 	if popups.size() > 4:

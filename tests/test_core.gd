@@ -48,10 +48,11 @@ func run() -> void:
 	for i in range(s.board.cells.size()):
 		if s.board.mines[i] == 1:
 			s.reveal(i)
-	check(s.strikes == s.board.mine_count and s.credits >= light_before, "mistakes never erase earned light")
+	check(s.failed and s.strikes == 2 and s.credits == light_before and s.board_earned==0, "two strikes lose the attempt and cargo, preserving bank")
+	check(s.retry_board(),"failed field can be retried immediately")
 	while not s.finished:
 		s.probe_one("tool")
-	check(s.last_reward.rating == 1 and s.cores == 1, "completion after all mine strikes")
+	check(s.last_reward.rating == 3 and s.cores == 1, "successful retry pays one core")
 	var completion_light := s.credits
 	s.check_completion()
 	s.reveal(0)
@@ -151,15 +152,16 @@ func run() -> void:
 	deep.start_board()
 	deep.reveal(40)
 	check(deep.board.plates.count(2)>0,"deeper sites introduce visible plating")
-	while not deep.layer_ready:
+	while not deep.finished:
 		deep.probe_one("tool")
 	var earned := deep.credits
 	deep.check_completion()
-	check(deep.credits==earned and not deep.finished,"stratum payout once, not final site")
+	check(deep.credits==earned and deep.finished,"single board completes site and pays once")
 	var roundtrip := GameSession.from_dict(JSON.parse_string(JSON.stringify(deep.to_dict())))
-	check(roundtrip!=null and roundtrip.layer_ready,"descent checkpoint roundtrip")
-	check(deep.advance_layer() and deep.stratum==1 and not deep.advance_layer(),"descend exactly once")
-	check(not deep.board.generated,"descent creates distinct fresh puzzle")
+	check(roundtrip!=null and roundtrip.finished,"single-field clear checkpoint roundtrip")
+	deep.next_board()
+	check(deep.index==21 and deep.stratum==0,"next clear goes straight to the next site")
+	check(not deep.board.generated,"next site creates distinct fresh puzzle")
 	deep.reveal(40)
 	var plated := -1
 	for i in range(deep.board.cells.size()):
@@ -215,6 +217,7 @@ func run() -> void:
 			visited.append(cursor.id)
 			cursor=Content.upgrade(cursor.pre)
 		check(cursor.id=="lens","upgrade path reaches origin: "+item.id)
+	load("res://tests/strike_regressions.gd").run(check)
 	load("res://tests/upgrade_regressions.gd").run(check)
 	load("res://tests/save_validation_regressions.gd").run(check)
 	load("res://tests/survey_form_regressions.gd").run(check)
