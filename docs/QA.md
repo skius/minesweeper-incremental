@@ -46,4 +46,8 @@ Agent-directed native play used visible clues, flags/chords, Pulse and aimed Cro
 
 ## Release
 
-Source milestone and Windows/Web export, standalone smoke and archive verification are being finalized. Browser runtime/persistence and lower-end hardware remain unverified. Art/audio remain procedural; no store integration was added.
+Source build: `b50db5a`. Windows and Compatibility Web exports succeeded. The actual exported Windows executable passes its expanded smoke (`release_v5.log`, `editor=false`): real tree selection and purchase after hovering another node, hull failure, failed-state save/reload, and immediate native retry retaining equipment. Its retry viewport was inspected.
+
+`builds/Afterlight-1.3.0-Windows.zip` contains exactly Afterlight.exe, Afterlight.pck and README.txt. Each entry matches the tested export by SHA-256; README also matches its source. Size: 39,582,990 bytes. Archive SHA-256: `ab89a2a8beb463ef8ee5b7e4f0e30b7e36689928cc1748a88043f4190809037e`. Evidence: `test_runs/package_v5.json`.
+
+Browser runtime/persistence and lower-end hardware remain unverified. Art/audio remain procedural; no store integration was added.

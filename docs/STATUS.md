@@ -1,6 +1,13 @@
 # Delivery state — Afterlight 1.3.0
 
-The revision is implemented on `codex/afterlight`; release packaging is in progress. Main remains unchanged. Tree milestone `e17e1d9` is pushed.
+The revision is implemented, verified, exported and packaged on `codex/afterlight`. Main remains unchanged. Tree milestone `e17e1d9` and gameplay source milestone `b50db5a` are pushed; subsequent changes are delivery documentation.
+
+## Build
+
+- Windows: `builds/windows/Afterlight.exe` with adjacent PCK and README.
+- Portable archive: `builds/Afterlight-1.3.0-Windows.zip` (39,582,990 bytes), exactly those three tested files. Every entry hash matches its exported file. SHA-256: `ab89a2a8beb463ef8ee5b7e4f0e30b7e36689928cc1748a88043f4190809037e`.
+- Compatibility Web: `builds/web/index.html` and supporting files. Export succeeds; browser runtime/persistence remain unverified.
+- Standalone Windows smoke (`release_v5.log`) passes rendering, pinned node purchase, failed-attempt save/reload and native retry with `editor=false`.
 
 ## Gameplay and UI
 
@@ -21,6 +28,6 @@ Matched strategy checks: careful play completes 18/18 with zero strikes. Row/ran
 
 Agent-directed native play cleared the opening with flags/chords, bought Lens/Crossbeam, exercised strikes/failure/retry, and cleared the new field using visible clues, Pulse and beams. Bank and equipment survived retry. The initial harness reached its timeout during an interrupted user turn; the saved run was resumed, advanced to field 3 and quit mid-board. No independent human playtest is claimed.
 
-## Remaining delivery work
+## Delivery status and limits
 
-Finish final native/export smoke checks, package the Windows executable/PCK/README, verify archive entry hashes, and record final evidence in QA.md. Browser runtime/persistence and lower-end hardware remain unverified. Keep reports, screenshots and test saves ignored; do not commit player feedback.
+Implementation, native play/checks, export smoke and archive verification are complete for this revision. Evidence is recorded in [QA.md](QA.md); package hashes are in ignored `test_runs/package_v5.json`. The original long-duration target, independent human enjoyment/pacing feedback, browser runtime/persistence and lower-end hardware remain unverified or unmet as stated above. Keep reports, screenshots and test saves ignored; do not commit player feedback.
